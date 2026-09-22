@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <meta name="theme-color" content="#0b0d10" />
+  <title>Crime Cockpit</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b0d10'/%3E%3Cpath d='M22 69 41 29h18l19 40H63l-4-9H40l-4 9Zm23-21h9l-4-11Z' fill='%23d6b36a'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="styles.css?v=6.3.1" />
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><div class="ambient-orb orb-a"></div><div class="ambient-orb orb-b"></div><div class="grain"></div></div>
+
+  <header class="topbar">
+    <button class="brand" type="button" data-go="overview" aria-label="Przejdź do kokpitu">
+      <span class="brand-mark">CC</span>
+      <span class="brand-copy"><span class="brand-kicker">PRYWATNY SYSTEM WYBORU KRYMINAŁÓW</span><strong>Crime Cockpit</strong></span>
+    </button>
+    <div class="top-actions">
+      <div class="mode-switch" role="group" aria-label="Tryb interfejsu">
+        <button id="ownerModeBtn" class="mode-btn active" type="button" data-mode="owner">Prosty</button>
+        <button id="expertModeBtn" class="mode-btn" type="button" data-mode="expert">Ekspercki</button>
+      </div>
+      <button id="commandBtn" class="icon-button" type="button" title="Szybkie wyszukiwanie (Ctrl+K)">⌘K</button>
+      <span id="sourceBadge" class="status-pill muted">DEMO</span>
+      <button id="refreshBtn" class="icon-button" type="button" title="Odśwież dane">↻</button>
+      <button id="settingsBtn" class="button primary" type="button">Połączenie</button>
+    </div>
+  </header>
+
+  <nav id="mainNav" class="tabs" aria-label="Sekcje Crime Cockpitu"></nav>
+
+  <main class="shell">
+    <section id="overview" class="view active" data-view="overview">
+      <div class="hero-layout reveal">
+        <article class="current-hero panel interactive-card">
+          <div class="current-cover-wrap" id="currentCover"></div>
+          <div class="current-copy">
+            <div class="section-kicker">BIEŻĄCA LEKTURA</div>
+            <div class="case-id">AKTA <span id="currentBookId">—</span></div>
+            <h1 id="currentTitle">—</h1>
+            <p id="currentAuthor" class="hero-author">—</p>
+            <div id="currentChips" class="chip-row"></div>
+            <div class="hero-insight">
+              <span class="insight-dot"></span>
+              <p id="currentNarrative">—</p>
+            </div>
+            <div class="hero-facts">
+              <div><span>Kontrola przed wyborem</span><strong id="currentPreflight">—</strong></div>
+              <div><span>Przewidywana ocena</span><strong id="currentPrediction">—</strong></div>
+              <div><span>Pewność modelu</span><strong id="currentConfidenceHuman">—</strong></div>
+              <div class="expert-only"><span>Ryzyko techniczne</span><strong id="currentRisk">—</strong></div>
+            </div>
+            <button id="currentDossierBtn" class="text-button" type="button">Otwórz pełne dossier →</button>
+          </div>
+        </article>
+
+        <article class="decision-hero panel reveal delay-1">
+          <div class="section-kicker">JAK WYBIERZEMY NASTĘPNĄ?</div>
+          <h2 id="decisionHeadline">—</h2>
+          <p id="decisionWhy" class="lead">—</p>
+          <div class="decision-visual"><div class="pulse-ring"><span>FIT</span><i>≠</i><span>TERAZ</span></div></div>
+          <div class="session-card">
+            <div><span class="mini-label">TRYB NA DZIŚ</span><strong id="sessionModeHuman">—</strong></div>
+            <p id="sessionEffect">—</p>
+          </div>
+          <details class="expert-only tech-details">
+            <summary>Jak dokładnie liczony jest wybór?</summary>
+            <p id="decisionPolicy">—</p>
+          </details>
+        </article>
+      </div>
+
+      <section id="metricGrid" class="metric-grid reveal delay-2" aria-label="Najważniejsze liczby"></section>
+
+      <section class="section-block reveal">
+        <div class="section-heading">
+          <div><div class="section-kicker">NASTĘPNE TROPIENIA</div><h2>Co może być następne?</h2></div>
+          <div class="heading-note">To jeszcze nie rekomendacje. Każdy finalista przejdzie świeżą kontrolę serii i spoilerów.</div>
+        </div>
+        <div id="candidateShelf" class="book-shelf"></div>
+      </section>
+
+      <div class="split-grid reveal">
+        <article class="panel compact-panel">
+          <div class="section-kicker">STAN PULI</div>
+          <h3>Co dzieje się z książkami?</h3>
+          <div id="lifecycleBars" class="status-bars"></div>
+          <p class="small-note">„Poczekalnia” nie oznacza słabej książki — tylko „nie teraz”.</p>
+        </article>
+        <article class="panel compact-panel">
+          <div class="section-kicker">KLUB LEKTUROWY</div>
+          <h3>Ostatnie notatki bez spoilerów</h3>
+          <div id="latestRoomNotes" class="mini-notes"></div>
+          <button class="text-button" type="button" data-go="reading-room">Przejdź do wszystkich notatek →</button>
+        </article>
+      </div>
+    </section>
+
+    <section id="queue" class="view" data-view="queue">
+      <div class="section-heading reveal"><div><div class="section-kicker">KOLEJKA</div><h1>Kandydaci do kolejnego wyboru</h1></div><p>Najpierw widzisz sens wyboru, dopiero w trybie eksperckim — pełne bebechy punktacji.</p></div>
+      <div id="queueCards" class="queue-cards reveal"></div>
+
+      <section class="section-block reveal">
+        <div class="section-heading small"><div><div class="section-kicker">UNDERCOVER GEMS</div><h3>Ukryte perełki poza radarem popularności</h3></div><span class="status-pill muted">QUALITY ≠ POPULARITY</span></div>
+        <p class="small-note">Mała liczba ocen sama niczego nie promuje. Tu trafiają tylko książki z niezależnym sygnałem jakości i czystą bramką serii.</p>
+        <div id="undercoverGems" class="book-shelf compact-shelf"></div>
+      </section>
+
+      <article class="panel expert-only reveal">
+        <div class="section-heading small"><div><div class="section-kicker">PARETO SHELF</div><h3>Mocne kompromisy bez jednej fałszywie precyzyjnej kolejki</h3></div><span class="status-pill muted">ADVISORY</span></div>
+        <div id="paretoShelf" class="queue-cards compact-cards"></div>
+      </article>
+
+      <div class="panel table-panel expert-only reveal"><div class="table-wrap"><table><thead><tr><th>#</th><th>Tytuł</th><th>Autor</th><th>Decision</th><th>Core Fit</th><th>Read Next</th><th>Discovery</th><th>Info Gain</th><th>Session</th><th>Status</th><th>Język</th><th>Ryzyko</th></tr></thead><tbody id="queueBody"></tbody></table></div></div>
+    </section>
+
+    <section id="director" class="view" data-view="director">
+      <div class="section-heading reveal"><div><div class="section-kicker">CRIME DIRECTOR</div><h1>Reżyser następnej lektury</h1></div><p>Wiele algorytmów zgłasza kandydatów. Director wybiera metodę właściwą na ten moment — właściciel dostaje jeden tytuł i sensowne „dlaczego teraz”.</p></div>
+      <div id="directorSummary" class="director-hero reveal"></div>
+      <div class="split-grid reveal">
+        <article class="panel"><div class="section-heading small"><div><div class="section-kicker">SHADOW COUNCIL</div><h3>Kto dziś lobbuje za czym?</h3></div><span class="status-pill muted">15 metod</span></div><div id="directorCouncil" class="director-council"></div></article>
+        <article class="panel"><div class="section-heading small"><div><div class="section-kicker">EXPERIENCE LANES</div><h3>Jakiego rodzaju doświadczenie proponuje system?</h3></div><span class="status-pill muted">NO PRESTIGE BIAS</span></div><div id="directorExperience" class="feature-list"></div></article>
+      </div>
+      <article class="panel reveal"><div class="section-heading small"><div><div class="section-kicker">PRELOAD RADAR</div><h3>Pliki, które warto przygotować zanim staną się problemem</h3></div><span class="status-pill muted">LOGISTICS ONLY</span></div><p class="small-note">To nie ranking książek. Brak EPUB-u nie obniża oceny — Radar tylko pilnuje, żeby logistyka nie opóźniła gotowej decyzji.</p><div id="preloadRadar" class="preload-grid"></div></article>
+    </section>
+
+    <section id="library" class="view" data-view="library">
+      <div class="section-heading reveal library-heading">
+        <div><div class="section-kicker">BIBLIOTEKA</div><h1>Cała kartoteka</h1><div class="vault-legend"><span class="vault-missing" aria-hidden="true">◌</span> brak EPUB-u w Vault</div></div>
+        <div class="library-tools"><label class="search-field"><span>⌕</span><input id="librarySearch" type="search" placeholder="Tytuł, autor, kraj, seria…" /></label><select id="lifecycleFilter"><option value="">Wszystkie statusy</option><option value="PROMOTE">W czołówce</option><option value="WATCH">Na radarze</option><option value="BENCH">Poczekalnia</option><option value="LOCKED">Zablokowane</option><option value="CURRENT NEXT">Bieżąca</option><option value="READ">Przeczytane</option><option value="RETIRE">Wycofane</option></select></div>
+      </div>
+      <div id="libraryGrid" class="library-grid reveal"></div>
+      <article class="panel expert-only reveal">
+        <div class="section-heading small"><div><div class="section-kicker">SERIES MAP</div><h3>Mapa zależności serii i spoiler continuity</h3></div><span id="seriesMapStatus" class="status-pill muted">—</span></div>
+        <p class="small-note">To warstwa prezentacyjna. Hard locki nadal pochodzą z rejestru zależności i nigdy nie są tutaj osłabiane.</p>
+        <div id="seriesMapList" class="feature-list"></div>
+      </article>
+    </section>
+
+    <section id="characters" class="view" data-view="characters">
+      <div class="section-heading reveal character-heading">
+        <div><div class="section-kicker">CHARACTER INTELLIGENCE · AKTA SPRAWY</div><h1>Postacie</h1><p>Ten sam Character Atlas, tylko teraz jako pełne akta sprawy: checkpoint-safe dossier, relacje, miejsca, Twoje podejrzenia, pamięć postaci i historia tego, co wolno było wiedzieć na danym etapie.</p></div>
+        <div class="character-tools"><label class="search-field"><span>⌕</span><input id="characterSearch" type="search" placeholder="Postać, alias, rola, książka…" /></label><select id="characterBookFilter"><option value="all">Wszystkie książki</option></select></div>
+      </div>
+
+      <article id="characterCaseHero" class="casefile-hero panel reveal"></article>
+      <div id="characterCaseTabs" class="casefile-tabs reveal" role="tablist" aria-label="Akta sprawy">
+        <button type="button" class="casefile-tab active" data-character-case-tab="files">Akta sprawy</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="relations">Powiązania</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="collisions">Nie pomyl</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="locations">Miejsca</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="suspicions">Podejrzenia</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="memory">Pamięć</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="unlocks">Odkrycia</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="reentry">Wracam do książki</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="time">Odtwarzanie</button>
+      </div>
+      <section id="characterCaseStage" class="casefile-stage reveal"></section>
+      <article id="currentCharacterRecall" class="panel character-recall reveal"></article>
+
+      <div class="section-heading reveal character-atlas-heading">
+        <div><div class="section-kicker">GLOBALNY ATLAS POSTACI</div><h2>Cała kartoteka</h2></div>
+        <p>Tu zostaje globalny atlas całej biblioteki. Akta powyżej są operacyjnym widokiem bieżącej sprawy.</p>
+      </div>
+      <div id="characterSummary" class="metric-grid reveal"></div>
+      <div id="characterGroups" class="character-groups reveal"></div>
+      <article class="panel expert-only reveal"><div class="section-heading small"><div><div class="section-kicker">CHARACTER COVERAGE</div><h3>Jak głęboko znamy obsadę biblioteki?</h3></div><span class="status-pill muted">COVERAGE ≠ QUALITY</span></div><div id="characterCoverageExpert" class="feature-list"></div></article>
+    </section>
+
+
+    <section id="achievements" class="view" data-view="achievements">
+      <div class="section-heading reveal achievement-heading">
+        <div><div class="section-kicker">TROFEA</div><h1>Gabinet osobliwości czytelniczych</h1></div>
+        <p>Achievementy są zabawą, ale liczniki są prawdziwe. Sekretne trofea pozostają ukryte do odblokowania.</p>
+      </div>
+      <div id="achievementSummary" class="metric-grid reveal"></div>
+      <div class="achievement-toolbar reveal">
+        <div id="achievementStatusFilters" class="filter-chips"></div>
+        <select id="achievementCategoryFilter"><option value="">Wszystkie kategorie</option></select>
+      </div>
+      <div id="achievementGallery" class="achievement-gallery reveal"></div>
+      <article class="panel reveal mission-preview-panel">
+        <div class="section-heading small"><div><div class="section-kicker">MISJE</div><h3>Eksperymenty, które mogą odblokować nowe trofea</h3></div><span class="status-pill muted">OPCJONALNE</span></div>
+        <div id="achievementMissionPreview" class="mission-preview"></div>
+      </article>
+    </section>
+
+    <section id="coverage" class="view" data-view="coverage">
+      <div class="section-heading reveal"><div><div class="section-kicker">MAPA WIEDZY</div><h1>Czego system jeszcze nie wie?</h1></div><p>Braki danych nie obniżają jakości książek. Mówią tylko, gdzie research da największy zwrot.</p></div>
+      <div class="split-grid reveal">
+        <article class="panel"><div class="section-kicker">POKRYCIE METADANYCH</div><h3>Gotowość modelu cech</h3><div id="metadataCoverage" class="coverage-list"></div></article>
+        <article class="panel"><div class="section-kicker">ŚLEPE PLAMY</div><h3>Gdzie jeszcze mało czytaliśmy?</h3><div id="blindSpotList" class="blind-list"></div></article>
+      </div>
+      <article class="panel expert-only reveal"><div class="section-heading small"><div><div class="section-kicker">ENRICHMENT ENGINE</div><h3>ROI brakujących cech</h3></div><span class="status-pill muted">METADATA ≠ QUALITY</span></div><div id="enrichmentFieldRoi" class="coverage-list"></div></article>
+      <article class="panel table-panel reveal"><div class="section-heading small"><div><div class="section-kicker">KOLEJKA WZBOGACANIA</div><h3>Gdzie warto uzupełnić dane najpierw?</h3></div><span class="status-pill warning">BEZ RESEARCHU FABUŁY</span></div><div class="table-wrap"><table><thead><tr><th>#</th><th>Tytuł</th><th>Autor</th><th>Status</th><th>Wynik</th><th>Braki danych</th><th>Czego brakuje</th></tr></thead><tbody id="enrichmentBody"></tbody></table></div></article>
+    </section>
+
+
+    <section id="health" class="view" data-view="health">
+      <div class="section-heading reveal"><div><div class="section-kicker">SYSTEM HEALTH</div><h1>Czy cały Cockpit jest zdrowy?</h1></div><p>Twarde invarianty pilnują serii, bramek, wag, ID i integralności danych. FAIL zatrzymuje decyzje; WARN oznacza dług techniczny do spłaty.</p></div>
+      <div id="healthSummary" class="metric-grid reveal"></div>
+      <article class="panel table-panel reveal"><div class="section-heading small"><div><div class="section-kicker">INVARIANTY</div><h3>Automatyczna kontrola integralności</h3></div><span id="healthOverall" class="status-pill muted">—</span></div><div class="table-wrap"><table><thead><tr><th>ID</th><th>Kategoria</th><th>Invariant</th><th>Status</th><th>Observed</th><th>Expected</th><th>Severity</th><th>Co zrobić</th></tr></thead><tbody id="healthBody"></tbody></table></div></article>
+    </section>
+
+    <section id="simulator" class="view" data-view="simulator">
+      <div class="section-heading reveal"><div><div class="section-kicker">DECISION SIMULATOR</div><h1>Co by było gdyby?</h1></div><p>Porównuje alternatywne tryby bez zmieniania bieżącego rankingu, Session Mode ani profilu gustu.</p></div>
+      <div id="simulatorSummary" class="metric-grid reveal"></div>
+      <div id="scenarioCards" class="queue-cards reveal"></div>
+      <article class="panel table-panel expert-only reveal"><div class="table-wrap"><table><thead><tr><th>AUTO #</th><th>Tytuł</th><th>AUTO</th><th>Comfort</th><th>Explorer</th><th>Polska</th><th>Low friction</th><th>Fresh radar</th><th>Series</th><th>Wildcard</th><th>Δ Explorer</th></tr></thead><tbody id="simulatorBody"></tbody></table></div></article>
+    </section>
+
+
+
+    <section id="missions" class="view" data-view="missions">
+      <div class="section-heading reveal"><div><div class="section-kicker">MISJE CZYTELNICZE</div><h1>Kontrolowane eksperymenty na własnym guście</h1></div><p>Misja nie jest rekomendacją i nigdy sama nie zmienia rankingu. To pytanie badawcze, które możesz świadomie podjąć.</p></div>
+      <div id="missionSummary" class="metric-grid reveal"></div>
+      <div id="missionCards" class="mission-grid reveal"></div>
+      <article class="panel reveal"><p class="small-note">Owner opt-in jest obowiązkowy. Fresh pre-flight i wszystkie hard locki serii działają tak samo jak przy zwykłym wyborze.</p></article>
+    </section>
+
+    <section id="frontier" class="view" data-view="frontier">
+      <div class="section-heading reveal"><div><div class="section-kicker">GRANICE WIEDZY</div><h1>Czego jeszcze nie wiemy o Twoim guście?</h1></div><p>Niepewność nie jest wadą książki. To mapa pytań, które kolejne lektury mogą rozstrzygnąć.</p></div>
+      <div id="frontierSummary" class="metric-grid reveal"></div>
+      <div id="frontierCards" class="mission-grid reveal"></div>
+    </section>
+
+    <section id="enrichment-engine" class="view" data-view="enrichment-engine">
+      <div class="section-heading reveal"><div><div class="section-kicker">ROI RESEARCHU</div><h1>Gdzie research da największy zwrot?</h1></div><p>Braki danych sterują kolejnością wzbogacania. Nie są karą jakościową dla książki.</p></div>
+      <div id="enrichmentEngineSummary" class="metric-grid reveal"></div>
+      <article class="panel reveal"><div class="section-kicker">POLA</div><h3>Najbardziej opłacalne cechy do uzupełnienia</h3><div id="enrichmentEngineFields" class="coverage-list"></div></article>
+      <article class="panel table-panel reveal"><div class="section-kicker">BOOK HOTLIST</div><div class="table-wrap"><table><thead><tr><th>#</th><th>Tytuł</th><th>Decision</th><th>Debt</th><th>Braki</th></tr></thead><tbody id="enrichmentHotlistBody"></tbody></table></div></article>
+    </section>
+
+    <section id="arena" class="view" data-view="arena">
+      <div class="section-heading reveal"><div><div class="section-kicker">ARENA MODELI</div><h1>Champion kontra challengery</h1></div><p>Tylko champion wpływa na LIVE. Challenger pozostaje cieniem, dopóki nie przejdzie formalnej bramki.</p></div>
+      <div id="arenaSummary" class="metric-grid reveal"></div>
+      <div id="arenaCards" class="queue-cards reveal"></div>
+    </section>
+
+    <section id="reading-room" class="view" data-view="reading-room">
+      <div class="section-heading reveal"><div><div class="section-kicker">KLUB LEKTUROWY</div><h1>Archiwum rozmów z książkami</h1></div><div class="reading-room-tools"><p>Każda myśl zostaje przypisana do konkretnej książki. Zero potwierdzania i obalania podejrzeń.</p><select id="readingRoomBookFilter"><option value="all">Wszystkie książki</option></select></div></div>
+      <div class="spoiler-shield reveal"><span>◉</span><strong>TRYB BEZSPOILEROWY</strong><p>Notatki uczą model dopiero po debriefie, nie w trakcie czytania.</p></div>
+      <div id="readingRoomList" class="timeline reveal"></div>
+    </section>
+
+    <section id="model" class="view" data-view="model">
+      <div class="section-heading reveal"><div><div class="section-kicker">MODEL</div><h1>Jak myśli system?</h1></div><p>Ta część jest celowo bardziej techniczna — tu sprawdzamy, czy algorytm faktycznie się uczy.</p></div>
+      <div class="model-grid reveal">
+        <article class="panel calibration-panel"><div class="section-kicker">KALIBRACJA</div><div class="calibration-layout"><div class="calibration-ring" id="calibrationRing"><span id="calibrationCount">0</span><small>testów</small></div><div><h3 id="calibrationState">—</h3><p>MAE <strong id="calibrationMae">—</strong> · RMSE <strong id="calibrationRmse">—</strong></p><p class="small-note">Pierwsze wiarygodne wnioski dopiero po kilku zamrożonych predykcjach.</p></div></div></article>
+        <article class="panel"><div class="section-kicker">OSIĄGNIĘCIA</div><h3>Postęp czytelniczy</h3><div id="achievementList" class="achievement-list"></div></article>
+      </div>
+      <article class="panel reveal"><div class="section-kicker">HISTORIA TESTÓW</div><h3>Predykcja kontra rzeczywistość</h3><div id="calibrationHistory" class="calibration-history"></div></article>
+      <article class="panel reveal"><div class="section-heading small"><div><div class="section-kicker">LEARNING LEDGER</div><h3>Historia uczenia modelu</h3></div><span id="learningPhase" class="status-pill muted">—</span></div><div id="learningTimeline" class="timeline compact-timeline"></div></article>
+
+      <div class="split-grid reveal">
+        <article class="panel"><div class="section-heading small"><div><div class="section-kicker">INTERAKCJE GUSTU</div><h3>Preferencje warunkowe</h3></div><span class="status-pill muted">ACTIVATION-GATED</span></div><div id="interactionList" class="interaction-list"></div></article>
+        <article class="panel"><div class="section-heading small"><div><div class="section-kicker">POST-MORTEM</div><h3>Czy rekomendacja się obroniła?</h3></div><span id="postmortemState" class="status-pill muted">—</span></div><div id="postmortemList" class="postmortem-list"></div></article>
+      </div>
+
+      <div class="split-grid reveal">
+        <article class="panel"><div class="section-heading small"><div><div class="section-kicker">MEMORY HALF-LIFE</div><h3>Czy książka zostaje w głowie?</h3></div><span id="memoryState" class="status-pill muted">OBSERVE</span></div><div id="memoryHalfLife" class="feature-list"></div></article>
+        <article class="panel"><div class="section-heading small"><div><div class="section-kicker">CRITIC · CROWD · ME</div><h3>Trzy różne kanały, bez sztucznej średniej</h3></div><span class="status-pill muted">n&lt;5</span></div><div id="criticCrowdMe" class="feature-list"></div></article>
+      </div>
+
+      <article class="panel reveal"><div class="section-heading small"><div><div class="section-kicker">EXPLANATION DIFF</div><h3>Co naprawdę zmieniło się w uzasadnieniu?</h3></div><span class="status-pill muted">NO RETROACTIVE REWRITE</span></div><div id="explanationDiff" class="timeline compact-timeline"></div></article>
+
+      <div class="split-grid reveal">
+        <article class="panel"><div class="section-kicker">PREDICTION MARKET</div><h3>Prawdopodobieństwa zamiast jednej liczby</h3><div id="predictionMarket" class="feature-list"></div></article>
+        <article class="panel"><div class="section-kicker">UNCERTAINTY BUDGET</div><h3>Skąd bierze się brak pewności?</h3><div id="uncertaintyBudget" class="feature-list"></div></article>
+      </div>
+    </section>
+
+    <section id="lab" class="view" data-view="lab">
+      <div class="section-heading reveal"><div><div class="section-kicker">LABORATORIUM</div><h1>Odporność na odpięte wrota</h1></div><p>Frontend pokazuje tu, jaki schemat widzi, jakie funkcje są aktywne i jakie nowe pola pojawiły się w bazie.</p></div>
+      <div id="labMetrics" class="metric-grid reveal"></div>
+      <div class="split-grid reveal"><article class="panel"><div class="section-kicker">SCHEMA TOLERANCE</div><h3>Nowe pola z arkusza</h3><div id="extraFieldsList" class="token-cloud"></div></article><article class="panel"><div class="section-kicker">FEATURE FLAGS</div><h3>Aktywne moduły</h3><div id="featureList" class="feature-list"></div></article></div>
+      <div class="split-grid reveal">
+        <article class="panel"><div class="section-heading small"><div><div class="section-kicker">SEMANTIC QUARANTINE</div><h3>Granica spoilerów dla pełnego tekstu</h3></div><span id="quarantineState" class="status-pill muted">—</span></div><div id="semanticQuarantine" class="feature-list"></div></article>
+        <article class="panel"><div class="section-kicker">SOURCE CALIBRATION</div><h3>Czy źródła trafiają w Twój odbiór?</h3><div id="sourceCalibration" class="feature-list"></div></article>
+      </div>
+      <article class="panel reveal"><div class="section-heading small"><div><div class="section-kicker">REVIEW INTELLIGENCE</div><h3>Spoiler-safe konsensus cech</h3></div><span class="status-pill muted">DESCRIPTIVE PRIOR</span></div><div id="reviewIntelligence" class="feature-list"></div></article>
+      <article class="panel reveal"><div class="section-heading small"><div><div class="section-kicker">BACKEND ATLAS</div><h3>Nowa inteligencja pod maską</h3></div><span class="status-pill muted">v6</span></div><div id="backendAtlas" class="atlas-grid"></div></article>
+    </section>
+  </main>
+
+  <footer><span id="frontendVersion">Crime Cockpit · local frontend</span><span id="lastUpdated">—</span></footer>
+
+  <dialog id="bookDialog" class="book-dialog"><button class="dialog-close" data-close-dialog="bookDialog" aria-label="Zamknij">×</button><div id="bookDialogContent"></div></dialog>
+
+  <dialog id="characterDialog" class="book-dialog"><button class="dialog-close" data-close-dialog="characterDialog" aria-label="Zamknij">×</button><div id="characterDialogContent"></div></dialog>
+
+  <dialog id="commandDialog" class="command-dialog"><div class="command-box"><div class="command-search"><span>⌕</span><input id="commandInput" type="search" placeholder="Szukaj książki albo sekcji…" autocomplete="off"/><kbd>ESC</kbd></div><div id="commandResults" class="command-results"></div></div></dialog>
+
+  <dialog id="settingsDialog" class="settings-dialog"><form method="dialog" class="settings-panel" id="settingsForm"><button class="dialog-close" value="cancel" aria-label="Zamknij">×</button><div class="section-kicker">DANE LIVE</div><h2>Połącz z Google Sheets</h2><p>Po jednorazowym wdrożeniu read-only Apps Script v5.1 wkleisz tu adres Web App oraz token. Dane są zapisane wyłącznie lokalnie w tej przeglądarce.</p><label>Web App URL<input id="apiUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label><label>Token<input id="tokenInput" type="password" autocomplete="off" placeholder="CRIME_COCKPIT_TOKEN" /></label><div class="dialog-actions"><button id="clearConfigBtn" class="button ghost" type="button">Wyczyść</button><button class="button primary" value="save">Zapisz i połącz</button></div><small>Bez konfiguracji działa snapshot demonstracyjny.</small></form></dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="demo-data.js?v=6.3.1"></script>
+  <script src="app.js?v=6.3.1"></script>
+</body>
+</html>
