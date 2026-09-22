@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.1';
+  const FRONTEND_VERSION = '6.3.2';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -55,6 +55,57 @@
   function moduleAvailable(key){ return moduleRows(key).length>0 || moduleData(key).status==='OK'; }
   function vaultMissing(book){ return book && book.vaultEpub === false && String(book.vaultSignal||'').toUpperCase()==='MISSING'; }
   function vaultSignalHtml(book){ return vaultMissing(book) ? `<span class="vault-missing" title="EPUB nie ma jeszcze w Google Drive / Ebook Vault" aria-label="Brak EPUB-u w Vault">◌</span>` : ''; }
+
+  function extraField(book,key){ return book?.extra && book.extra[key] != null ? String(book.extra[key]) : ''; }
+  function originalLanguage(book){ return String(book?.originalLanguage || extraField(book,'Original Language') || '').toUpperCase(); }
+  function translationStudioState(book){ return String(book?.translationStudioState || extraField(book,'Translation Studio State') || '').toUpperCase(); }
+  function privatePlEditionId(book){ return String(book?.privatePlEditionId || extraField(book,'Private PL Edition ID') || ''); }
+  function languageUi(book){
+    const explicit=String(book?.languageUi || extraField(book,'Language UI') || '').trim();
+    if(explicit) return explicit;
+    const status=String(book?.language||'').toUpperCase();
+    const orig=originalLanguage(book);
+    if(status==='PL OFFICIAL') return orig && orig!=='PL' ? `Oryginał: ${languageName(orig)} · oficjalne wydanie polskie` : 'Wydanie polskie';
+    if(status==='ORIGINAL EN') return 'Oryginał: angielski';
+    if(status==='ORIGINAL FR') return 'Oryginał: francuski';
+    if(status==='EN TRANSLATION') return orig ? `Oryginał: ${languageName(orig)} · tłumaczenie angielskie` : 'Tłumaczenie angielskie';
+    if(status==='PRIVATE PL TRANSLATION') return 'Tłumaczenie własne PL';
+    if(status==='EN FALLBACK') return 'Wydanie angielskie';
+    return book?.vaultLanguage ? `Wydanie w Vault: ${languageName(book.vaultLanguage)}` : (book?.language||'—');
+  }
+  function languageName(code){
+    const m={PL:'polski',EN:'angielski',FR:'francuski',FI:'fiński',DE:'niemiecki',ES:'hiszpański',IT:'włoski',JA:'japoński',KO:'koreański',NO:'norweski',SV:'szwedzki',DA:'duński',NL:'niderlandzki'};
+    return m[String(code||'').toUpperCase()] || String(code||'').toUpperCase();
+  }
+  function languageShort(book){
+    const status=String(book?.language||'').toUpperCase();
+    const orig=originalLanguage(book);
+    if(status==='PL OFFICIAL') return 'po polsku';
+    if(status==='ORIGINAL EN') return 'oryginał EN';
+    if(status==='ORIGINAL FR') return 'oryginał FR';
+    if(status==='EN TRANSLATION') return orig ? `EN ← ${orig}` : 'tłumaczenie EN';
+    if(status==='PRIVATE PL TRANSLATION') return 'własne PL';
+    if(status==='EN FALLBACK') return 'wydanie EN';
+    return book?.vaultLanguage ? `Vault: ${book.vaultLanguage}` : (book?.language||'');
+  }
+  function translationChipHtml(book){
+    const st=translationStudioState(book);
+    if(!st || st==='NONE') return '';
+    if(st.includes('ACTIVE')) return '<span class="chip green">tłumaczenie własne · w toku</span>';
+    if(st.includes('COMPLETE') || st.includes('DONE')) return '<span class="chip green">tłumaczenie własne · gotowe</span>';
+    if(st.includes('QUEUED')) return '<span class="chip brass">tłumaczenie własne · kolejka</span>';
+    return `<span class="chip">${esc('tłumaczenie własne · '+st.toLowerCase())}</span>`;
+  }
+  function rawLanguageStatusLabel(status){
+    const s=String(status||'').toUpperCase();
+    if(s==='PL OFFICIAL') return 'wydanie polskie';
+    if(s==='ORIGINAL EN') return 'oryginał angielski';
+    if(s==='ORIGINAL FR') return 'oryginał francuski';
+    if(s==='EN TRANSLATION') return 'tłumaczenie angielskie';
+    if(s==='PRIVATE PL TRANSLATION') return 'tłumaczenie własne PL';
+    if(s==='EN FALLBACK') return 'wydanie angielskie';
+    return status||'—';
+  }
   function rowByBook(moduleKey,bookId){ return moduleRows(moduleKey).find(r=>String(cell(r,'Book ID')||'')===String(bookId||'')) || null; }
   function moduleTitle(key,fallback=''){ return moduleData(key).title || moduleData(key).sheet || fallback || key; }
 
@@ -365,9 +416,9 @@
   }
 
   function renderQueue(){
-    $('#queueCards').innerHTML=data.candidates.map((b,i)=>`<article class="queue-card" data-book-id="${esc(b.id||'')}">${coverHtml(b,'small')}<div class="queue-main"><div class="queue-title"><h3>${esc(b.title)}${vaultSignalHtml(b)}</h3>${statusBadge(b.lifecycle)}</div><p>${esc(b.author)} · ${esc(b.country||'')} · ${esc(b.language==='PL OFFICIAL'?'po polsku':b.language==='EN FALLBACK'?'angielski':'')}</p><p class="queue-reason">${esc(queueNarrative(b))}</p></div><div class="queue-score"><span>${esc(term('Decision Score','Czy warto teraz'))}</span><strong>${n(b.decision)}</strong></div></article>`).join('')||`<div class="empty">Brak kandydatów.</div>`;
+    $('#queueCards').innerHTML=data.candidates.map((b,i)=>`<article class="queue-card" data-book-id="${esc(b.id||'')}">${coverHtml(b,'small')}<div class="queue-main"><div class="queue-title"><h3>${esc(b.title)}${vaultSignalHtml(b)}</h3>${statusBadge(b.lifecycle)}</div><p>${esc(b.author)} · ${esc(b.country||'')}${languageShort(b)?` · ${esc(languageShort(b))}`:''}</p><p class="queue-reason">${esc(queueNarrative(b))}</p></div><div class="queue-score"><span>${esc(term('Decision Score','Czy warto teraz'))}</span><strong>${n(b.decision)}</strong></div></article>`).join('')||`<div class="empty">Brak kandydatów.</div>`;
     $('#queueCards').querySelectorAll('.queue-card').forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.bookId))));
-    $('#queueBody').innerHTML=data.candidates.map((b,i)=>`<tr><td>${b.decisionRank||i+1}</td><td><strong>${esc(b.title)}</strong></td><td>${esc(b.author)}</td><td>${n(b.decision)}</td><td>${n(b.bookFit)}</td><td>${n(b.readNext)}</td><td>${n(b.discoverySignal)}</td><td>${n(b.infoGain)}</td><td>${n(b.sessionBoost)}</td><td>${statusBadge(b.lifecycle)}</td><td>${esc(b.language||'')}</td><td>${esc(b.risk||'')}</td></tr>`).join('');
+    $('#queueBody').innerHTML=data.candidates.map((b,i)=>`<tr><td>${b.decisionRank||i+1}</td><td><strong>${esc(b.title)}</strong></td><td>${esc(b.author)}</td><td>${n(b.decision)}</td><td>${n(b.bookFit)}</td><td>${n(b.readNext)}</td><td>${n(b.discoverySignal)}</td><td>${n(b.infoGain)}</td><td>${n(b.sessionBoost)}</td><td>${statusBadge(b.lifecycle)}</td><td>${esc(languageUi(b))}</td><td>${esc(b.risk||'')}</td></tr>`).join('');
     renderUndercoverGems();
     renderParetoShelf();
   }
@@ -379,6 +430,9 @@
     if((b.infoGain||0)>=85) bits.push('dużo nauczy model');
     if((b.discoverySignal||0)>=80) bits.push('mocny sygnał odkrycia');
     if(b.language==='PL OFFICIAL') bits.push('dostępna po polsku');
+    const ts=translationStudioState(b);
+    if(ts.includes('ACTIVE')) bits.push('własne tłumaczenie w toku');
+    else if(ts.includes('QUEUED')) bits.push('własne tłumaczenie w kolejce');
     return bits.length ? bits.join(' · ') : 'ciekawy kandydat do dalszego sprawdzenia';
   }
 
@@ -393,7 +447,7 @@
     const palette=moduleRows('experiencePalette').filter(r=>String(cell(r,'Status')).includes('ELIGIBLE')).sort((a,b)=>(numv(cell(b,'Fun Potential'))||0)-(numv(cell(a,'Fun Potential'))||0)).slice(0,5);
     expRoot.innerHTML=palette.map(r=>`<div class="feature-item"><span><strong>${esc(cell(r,'Title'))}</strong><small>${esc(cell(r,'Palette Class'))}</small></span><span>fun ${n(numv(cell(r,'Fun Potential')),0)} · depth ${n(numv(cell(r,'Depth Potential')),0)}</span></div>`).join('')||`<div class="empty">Paleta doświadczeń nie została doczytana.</div>`;
     const preload=moduleRows('preloadRadar').filter(r=>String(cell(r,'Preload State')).toUpperCase()==='PRELOAD SOON').sort((a,b)=>(numv(cell(b,'Preload Pressure'))||0)-(numv(cell(a,'Preload Pressure'))||0));
-    preloadRoot.innerHTML=preload.map(r=>`<article class="preload-card" data-book-id="${esc(cell(r,'Book ID'))}"><div><span class="vault-missing" aria-hidden="true">◌</span><strong>${esc(cell(r,'Title'))}</strong><small>${esc(cell(r,'Author'))}</small></div><div class="preload-score"><b>${n(numv(cell(r,'Preload Pressure')),0)}</b><span>${esc(cell(r,'Language Status'))}</span></div><p>${esc(cell(r,'Why'))}</p></article>`).join('')||`<div class="empty">Nic nie wymaga wcześniejszego przygotowania.</div>`;
+    preloadRoot.innerHTML=preload.map(r=>`<article class="preload-card" data-book-id="${esc(cell(r,'Book ID'))}"><div><span class="vault-missing" aria-hidden="true">◌</span><strong>${esc(cell(r,'Title'))}</strong><small>${esc(cell(r,'Author'))}</small></div><div class="preload-score"><b>${n(numv(cell(r,'Preload Pressure')),0)}</b><span>${esc(rawLanguageStatusLabel(cell(r,'Language Status')))}</span></div><p>${esc(cell(r,'Why'))}</p></article>`).join('')||`<div class="empty">Nic nie wymaga wcześniejszego przygotowania.</div>`;
     preloadRoot.querySelectorAll('[data-book-id]').forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.bookId))));
   }
 
@@ -643,7 +697,7 @@
     const summary=[['Polityka',s.policy||'—','Bieżące wagi'],['Kandydaci',s.candidates||0,'Bez CURRENT NEXT'],['Zmiany ≥10',s.rankShifts||0,'AUTO → EXPLORER'],['Spór top #1',s.disagreement||'—','AUTO / Explorer / Wildcard']];
     root.innerHTML=summary.map(([l,v,d])=>`<div class="metric-card"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('');
     const modes=[['AUTO',s.autoTop,'autoRank','auto'],['EXPLORER',s.explorerTop,'explorerRank','explorer'],['WILDCARD',s.wildcardTop,'wildcardRank','wildcard']];
-    $('#scenarioCards').innerHTML=modes.map(([mode,title,rankKey,scoreKey])=>{const b=rows.find(x=>x[rankKey]===1)||rows.find(x=>x.title===title)||{};return `<article class="queue-card"><div class="queue-rank">${esc(mode==='AUTO'?'A':mode==='EXPLORER'?'E':'W')}</div><div><div class="queue-topline"><span class="section-kicker">${esc(mode)}</span></div><h3>${esc(b.title||title||'—')}</h3><p>${esc(b.country||'')} ${b.language?`· ${esc(b.language)}`:''}</p><p class="small-note">${esc(mode==='AUTO'?'Bieżąca polityka bez Session Boost':mode==='EXPLORER'?'Premia za Information Gain':'Wymuszone wagi wildcard')}</p></div><div class="queue-score"><strong>${n(b[scoreKey])}</strong><span>${esc(term('Decision Score','Czy warto teraz'))}</span></div></article>`}).join('');
+    $('#scenarioCards').innerHTML=modes.map(([mode,title,rankKey,scoreKey])=>{const b=rows.find(x=>x[rankKey]===1)||rows.find(x=>x.title===title)||{};return `<article class="queue-card"><div class="queue-rank">${esc(mode==='AUTO'?'A':mode==='EXPLORER'?'E':'W')}</div><div><div class="queue-topline"><span class="section-kicker">${esc(mode)}</span></div><h3>${esc(b.title||title||'—')}</h3><p>${esc(b.country||'')} ${languageShort(b)?`· ${esc(languageShort(b))}`:''}</p><p class="small-note">${esc(mode==='AUTO'?'Bieżąca polityka bez Session Boost':mode==='EXPLORER'?'Premia za Information Gain':'Wymuszone wagi wildcard')}</p></div><div class="queue-score"><strong>${n(b[scoreKey])}</strong><span>${esc(term('Decision Score','Czy warto teraz'))}</span></div></article>`}).join('');
     $('#simulatorBody').innerHTML=rows.slice(0,30).map(b=>`<tr><td>#${n(b.autoRank,0)}</td><td><strong>${esc(b.title)}</strong><br><small>${esc(b.country||'')}</small></td><td>${n(b.auto)}</td><td>${n(b.comfort)}</td><td>${n(b.explorer)}</td><td>${n(b.polska)}</td><td>${n(b.lowFriction)}</td><td>${n(b.freshRadar)}</td><td>${n(b.seriesContinue)}</td><td>${n(b.wildcard)}</td><td>${b.autoRank!=null&&b.explorerRank!=null?`${b.explorerRank-b.autoRank>0?'+':''}${b.explorerRank-b.autoRank}`:'—'}</td></tr>`).join('')||`<tr><td colspan="11" class="empty">Brak danych symulatora.</td></tr>`;
   }
 
@@ -872,7 +926,9 @@
     ].filter(Boolean);
     const intelligenceSection=intelligence.length?`<section class="dossier-intelligence"><div class="section-kicker">INTELLIGENCE PROFILE</div><div class="intelligence-grid">${intelligence.map(([k,v])=>`<div><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div></section>`:'';
     const vaultSection=vaultMissing(book)?`<div class="vault-note"><span class="vault-missing">◌</span><div><strong>EPUB-u nie ma jeszcze w Vault</strong><small>${esc(book.preloadState==='PRELOAD SOON'?'Preload Radar sugeruje przygotowanie go zawczasu.':'To tylko informacja logistyczna — bez wpływu na ocenę książki.')}</small></div></div>`:'';
-    $('#bookDialogContent').innerHTML=`<div class="dossier"><div>${coverHtml(book,'large')}</div><div><div class="section-kicker">DOSSIER KSIĄŻKI</div><h2>${esc(book.title)}${vaultSignalHtml(book)}</h2><p class="subtitle">${esc(book.author)}${book.country?` · ${esc(book.country)}`:''}</p><div class="chip-row">${statusBadge(book.lifecycle)}${book.series?`<span class="chip brass">${esc(book.series)}${book.volume?` #${esc(book.volume)}`:''}</span>`:''}${book.language?`<span class="chip">${esc(book.language==='PL OFFICIAL'?'polskie wydanie':book.language)}</span>`:''}</div><div class="dossier-grid"><div class="dossier-stat"><span>${esc(term('Core Book Fit','Dopasowanie do Ciebie'))}</span><strong>${n(book.bookFit)}</strong></div><div class="dossier-stat"><span>${esc(term('Decision Score','Czy warto teraz'))}</span><strong>${n(book.decision)}</strong></div><div class="dossier-stat"><span>${esc(term('Information Gain','Ile się nauczymy'))}</span><strong>${n(book.infoGain)}</strong></div></div><div class="dossier-reason">${esc(simpleReason)}</div><div class="dossier-grid"><div class="dossier-stat"><span>Seria / ciągłość</span><strong>${esc(book.seriesSafety||book.seriesMode||'—')}</strong></div><div class="dossier-stat"><span>Język</span><strong>${esc(book.language||'—')}</strong></div><div class="dossier-stat expert-only"><span>${esc(term('Metadata Debt','Braki danych'))}</span><strong>${n(book.metadataDebt,0)}</strong></div></div>${vaultSection}${intelligenceSection}${characterBookSection(book)}${roomSection}${book.preflightSource?`<p class="small-note">Ostatnia kontrola: ${esc(book.preflightSource)}</p>`:''}${extraEntries.length?`<details class="expert-only tech-details"><summary>Nowe / dodatkowe pola z arkusza</summary><div class="extra-grid">${extraEntries.map(([k,v])=>`<div class="extra-item"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div></details>`:''}</div></div>`;
+    const tsState=translationStudioState(book);
+    const translationSection=tsState&&tsState!=='NONE'?`<div class="vault-note"><span class="status-pill muted">PL</span><div><strong>${esc(tsState.includes('ACTIVE')?'Tłumaczenie własne jest w toku':tsState.includes('QUEUED')?'Tłumaczenie własne czeka w kolejce':'Tłumaczenie własne')}</strong><small>${esc(privatePlEditionId(book)?'Planowana edycja: '+privatePlEditionId(book):'Translation Studio · prywatna ścieżka właściciela')}</small></div></div>`:'';
+    $('#bookDialogContent').innerHTML=`<div class="dossier"><div>${coverHtml(book,'large')}</div><div><div class="section-kicker">DOSSIER KSIĄŻKI</div><h2>${esc(book.title)}${vaultSignalHtml(book)}</h2><p class="subtitle">${esc(book.author)}${book.country?` · ${esc(book.country)}`:''}</p><div class="chip-row">${statusBadge(book.lifecycle)}${book.series?`<span class="chip brass">${esc(book.series)}${book.volume?` #${esc(book.volume)}`:''}</span>`:''}${book.language?`<span class="chip">${esc(languageShort(book)||languageUi(book))}</span>`:''}${translationChipHtml(book)}</div><div class="dossier-grid"><div class="dossier-stat"><span>${esc(term('Core Book Fit','Dopasowanie do Ciebie'))}</span><strong>${n(book.bookFit)}</strong></div><div class="dossier-stat"><span>${esc(term('Decision Score','Czy warto teraz'))}</span><strong>${n(book.decision)}</strong></div><div class="dossier-stat"><span>${esc(term('Information Gain','Ile się nauczymy'))}</span><strong>${n(book.infoGain)}</strong></div></div><div class="dossier-reason">${esc(simpleReason)}</div><div class="dossier-grid"><div class="dossier-stat"><span>Seria / ciągłość</span><strong>${esc(book.seriesSafety||book.seriesMode||'—')}</strong></div><div class="dossier-stat"><span>Język / wydanie</span><strong>${esc(languageUi(book))}</strong></div><div class="dossier-stat expert-only"><span>${esc(term('Metadata Debt','Braki danych'))}</span><strong>${n(book.metadataDebt,0)}</strong></div></div>${vaultSection}${translationSection}${intelligenceSection}${characterBookSection(book)}${roomSection}${book.preflightSource?`<p class="small-note">Ostatnia kontrola: ${esc(book.preflightSource)}</p>`:''}${extraEntries.length?`<details class="expert-only tech-details"><summary>Nowe / dodatkowe pola z arkusza</summary><div class="extra-grid">${extraEntries.map(([k,v])=>`<div class="extra-item"><span>${esc(k)}</span><strong>${esc(v)}</strong></div>`).join('')}</div></details>`:''}</div></div>`;
     hydrateCovers(dialog);
     const roomBtn=$('[data-open-room]',dialog);
     if(roomBtn) roomBtn.addEventListener('click',()=>{dialog.close();setView('reading-room');const filter=$('#readingRoomBookFilter');if(filter){filter.value=roomBtn.dataset.openRoom||'all';renderReadingRoom();}});
