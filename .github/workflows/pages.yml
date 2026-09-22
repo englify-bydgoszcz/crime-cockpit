@@ -36,6 +36,8 @@ jobs:
           unzip -q site.zip -d dist
           cp app.js dist/app.js
           cp index.html dist/index.html
+          mkdir -p dist/assets
+          cp -R assets/. dist/assets/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
