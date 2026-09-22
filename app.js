@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.2';
+  const FRONTEND_VERSION = '6.3.3';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -555,7 +555,7 @@
     const walls=rowsForBook('suspectWall',bookId);
     const pack=rowsForBook('reentryPackBuilder',bookId).filter(r=>String(cell(r,'Status')).toUpperCase()!=='RETIRED');
     const snaps=rowsForBook('checkpointSnapshots',bookId), deltas=rowsForBook('caseDelta',bookId), playback=rowsForBook('caseboardPlayback',bookId);
-    const memory=rowsForBook('characterMemoryState',bookId), unlocks=rowsForBook('characterUnlocks',bookId);
+    const memory=rowsForBook('characterMemoryState',bookId), unlocks=rowsForBook('characterUnlocks',bookId), scene=rowsForBook('caseSceneState',bookId)[0]||null;
     const portrait=(id,name,path)=>path?`<div class="mini-face has-image"><img src="${esc(path)}" alt=""/></div>`:`<div class="mini-face">${esc(characterInitials(name))}</div>`;
     if(characterCaseTab==='relations'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ</div><h3>${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a,cell(r,'From Portrait'))}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b,cell(r,'To Portrait'))}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div>`;
@@ -572,7 +572,8 @@
     } else if(characterCaseTab==='reentry'){
       const chars=pack.filter(r=>String(cell(r,'Item Type'))==='CHARACTER'), locs=pack.filter(r=>String(cell(r,'Item Type'))==='LOCATION'), theories=pack.filter(r=>String(cell(r,'Item Type'))==='SUSPICION');
       const group=(title,rows)=>`<article class="panel reentry-group"><div class="section-kicker">${esc(title)}</div>${rows.map(r=>`<div class="reentry-item"><div><strong>${esc(cell(r,'Label'))}</strong><span>${esc(cell(r,'Memory Cue'))}</span></div><p>${esc(cell(r,'Safe Fact'))}</p><b>${esc(cell(r,'Priority'))}</b></div>`).join('')||'<div class="empty">Brak elementów.</div>'}</article>`;
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">WRACAM DO KSIĄŻKI</div><h3>30–60 sekund i wracasz do sprawy</h3></div></div><div class="reentry-grid">${group('POSTACIE',chars)}${group('MIEJSCA',locs)}${group('TWOJE TEORIE',theories)}</div>`;
+      const sceneCard=scene?`<article class="panel reentry-group"><div class="section-kicker">GDZIE JESTEM W HISTORII?</div><h3>${esc(cell(scene,'Headline')||'Bieżący stan sprawy')}</h3><div class="feature-list"><div class="feature-item"><span>Postacie do przypomnienia</span><strong>${esc(cell(scene,'Character Focus')||'—')}</strong></div><div class="feature-item"><span>Miejsca</span><strong>${esc(cell(scene,'Location Focus')||'—')}</strong></div><div class="feature-item"><span>Otwarte pytania</span><strong>${esc(cell(scene,'Theory Focus')||'—')}</strong></div><div class="feature-item"><span>Najlepsza pomoc</span><strong>${esc(cell(scene,'Recommended Aid')||'—')}</strong></div></div><p class="small-note">Rekonstrukcja korzysta wyłącznie z danych bezpiecznych dla bieżącej granicy wiedzy.</p></article>`:'';
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">WRACAM DO KSIĄŻKI</div><h3>30–60 sekund i wracasz do sprawy</h3></div></div>${sceneCard}<div class="reentry-grid">${group('POSTACIE',chars)}${group('MIEJSCA',locs)}${group('TWOJE TEORIE',theories)}</div>`;
     } else if(characterCaseTab==='time'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ODTWARZANIE SPRAWY</div><h3>Co Cockpit wiedział wtedy?</h3></div></div><div class="playback-strip">${playback.map((r,i)=>`<article class="playback-frame"><b>${i+1}</b><div><span>${esc(cell(r,'Progress'))}</span><p>${esc(cell(r,'Playback Caption'))}</p><small>${esc(cell(r,'Safe Cast N'))} postaci · ${esc(cell(r,'Locations N'))} miejsc · ${esc(cell(r,'Portrait N'))} portretów</small></div></article>`).join('')}</div><div class="snapshot-grid">${snaps.map(r=>`<article class="snapshot-card"><div><span>${esc(cell(r,'Snapshot ID'))}</span><strong>${esc(cell(r,'Progress'))}</strong></div><p>${esc(cell(r,'Safe Cast N'))} postaci · ${esc(cell(r,'Relations N'))} relacji · ${esc(cell(r,'Locations N'))} miejsc</p></article>`).join('')}</div><div class="case-delta-list">${deltas.map(r=>`<div class="case-delta-row"><strong>${esc(cell(r,'Delta Type'))}</strong><span>postacie ${esc(cell(r,'Cast Δ'))} · relacje ${esc(cell(r,'Relations Δ'))} · miejsca ${esc(cell(r,'Locations Δ'))}</span></div>`).join('')}</div>`;
     } else {
