@@ -55,6 +55,9 @@ jobs:
           test -f dist/styles.css
           test -f dist/demo-data.js
 
+      - name: Frontend regression smoke
+        run: node scripts/frontend-smoke.cjs
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
         with:
