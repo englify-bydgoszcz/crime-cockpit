@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.4';
+  const FRONTEND_VERSION = '6.3.5';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -473,13 +473,21 @@
     return moduleRows(key).find(r=>String(cell(r,'Character ID'))===String(characterId||'')&&(!bookId||String(cell(r,'Book ID'))===String(bookId))) || null;
   }
   function characterInitials(name=''){ const parts=String(name).trim().split(/\s+/).filter(Boolean); return (parts.length>1?parts[0][0]+parts[parts.length-1][0]:String(name).slice(0,2)).toUpperCase(); }
+  function drivePortraitUrl_(asset){
+    if(!asset) return '';
+    const runtime=String(cell(asset,'Portrait URL')||'').trim();
+    if(/^https?:\/\//i.test(runtime)) return runtime;
+    let id=String(cell(asset,'Drive File ID')||'').trim();
+    if(!id){
+      const driveUrl=String(cell(asset,'Drive URL')||'').trim();
+      const m=driveUrl.match(/\/d\/([A-Za-z0-9_-]+)/)||driveUrl.match(/[?&]id=([A-Za-z0-9_-]+)/);
+      if(m) id=m[1];
+    }
+    return id?('https://drive.google.com/uc?export=view&id='+encodeURIComponent(id)):'';
+  }
   function portraitUrlFor(characterId, bookId=''){
     const a=rowForCharacter('caseFileAssets',characterId,bookId)||rowForCharacter('caseFileAssets',characterId);
-    const raw=String(cell(a,'Frontend Asset Path','Portrait URL','Asset URL','Generated Portrait')||'').trim();
-    if(!raw) return '';
-    if(/^(https?:\/\/|data:|blob:)/i.test(raw)) return raw;
-    if(/^[A-Za-z0-9_./-]+\.(png|jpe?g|webp|gif)$/i.test(raw)) return raw;
-    return '';
+    return drivePortraitUrl_(a);
   }
   function humanGate(v=''){
     const x=String(v||'').toUpperCase();
@@ -557,15 +565,15 @@
     const pack=rowsForBook('reentryPackBuilder',bookId).filter(r=>String(cell(r,'Status')).toUpperCase()!=='RETIRED');
     const snaps=rowsForBook('checkpointSnapshots',bookId), deltas=rowsForBook('caseDelta',bookId), playback=rowsForBook('caseboardPlayback',bookId);
     const memory=rowsForBook('characterMemoryState',bookId), unlocks=rowsForBook('characterUnlocks',bookId), scene=rowsForBook('caseSceneState',bookId)[0]||null;
-    const portrait=(id,name,path)=>path?`<div class="mini-face has-image"><img src="${esc(path)}" alt=""/></div>`:`<div class="mini-face">${esc(characterInitials(name))}</div>`;
+    const portrait=(id,name)=>{const url=portraitUrlFor(id,bookId);return url?`<div class="mini-face has-image"><img src="${esc(url)}" alt=""/></div>`:`<div class="mini-face">${esc(characterInitials(name))}</div>`;};
     if(characterCaseTab==='relations'){
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ</div><h3>${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a,cell(r,'From Portrait'))}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b,cell(r,'To Portrait'))}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div>`;
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ</div><h3>${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a)}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b)}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div>`;
     } else if(characterCaseTab==='collisions'){
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">NIE POMYL ICH</div><h3>${collisions.length} par do rozróżnienia</h3></div><span class="status-pill muted">POMOC PAMIĘCIOWA</span></div><div class="visual-collision-grid">${collisions.map(r=>`<article class="visual-collision-card"><div class="visual-pair"><button data-character-id="${esc(cell(r,'Character A ID'))}">${portrait(cell(r,'Character A ID'),cell(r,'Character A'),cell(r,'Portrait A'))}<strong>${esc(cell(r,'Character A'))}</strong></button><span>≠</span><button data-character-id="${esc(cell(r,'Character B ID'))}">${portrait(cell(r,'Character B ID'),cell(r,'Character B'),cell(r,'Portrait B'))}<strong>${esc(cell(r,'Character B'))}</strong></button></div><p>${esc(cell(r,'Safe Disambiguator'))}</p><small>ryzyko pomyłki ${esc(cell(r,'Score'))}/100</small></article>`).join('')||'<div class="empty">Brak par do rozróżnienia.</div>'}</div>`;
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">NIE POMYL ICH</div><h3>${collisions.length} par do rozróżnienia</h3></div><span class="status-pill muted">POMOC PAMIĘCIOWA</span></div><div class="visual-collision-grid">${collisions.map(r=>`<article class="visual-collision-card"><div class="visual-pair"><button data-character-id="${esc(cell(r,'Character A ID'))}">${portrait(cell(r,'Character A ID'),cell(r,'Character A'))}<strong>${esc(cell(r,'Character A'))}</strong></button><span>≠</span><button data-character-id="${esc(cell(r,'Character B ID'))}">${portrait(cell(r,'Character B ID'),cell(r,'Character B'))}<strong>${esc(cell(r,'Character B'))}</strong></button></div><p>${esc(cell(r,'Safe Disambiguator'))}</p><small>ryzyko pomyłki ${esc(cell(r,'Score'))}/100</small></article>`).join('')||'<div class="empty">Brak par do rozróżnienia.</div>'}</div>`;
     } else if(characterCaseTab==='locations'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY</div><h3>${locations.length} miejsc</h3></div></div><div class="case-location-grid">${locations.map(r=>`<article class="case-location-card"><div class="case-location-pin">⌖</div><div><span>${esc(cell(r,'Location Role'))}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p></div></article>`).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
     } else if(characterCaseTab==='suspicions'){
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ŚCIANA PODEJRZEŃ</div><h3>Twoje hipotezy, nie werdykt systemu</h3></div><span class="status-pill warning">ASYSTENT NIE OCENIA WINY</span></div><div class="suspect-wall-ui">${walls.map(r=>`<article class="suspect-wall-card ${esc(String(cell(r,'Visual State')).toLowerCase())}">${portrait(cell(r,'Character ID'),cell(r,'Character'),cell(r,'Portrait Path'))}<div><span>${esc(cell(r,'Progress'))}</span><h4>${esc(cell(r,'Character'))}</h4><strong>${esc(cell(r,'Pin Type'))}</strong><p>${esc(cell(r,'Text'))}</p></div></article>`).join('')||'<div class="empty">Brak przypiętych hipotez.</div>'}</div>`;
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ŚCIANA PODEJRZEŃ</div><h3>Twoje hipotezy, nie werdykt systemu</h3></div><span class="status-pill warning">ASYSTENT NIE OCENIA WINY</span></div><div class="suspect-wall-ui">${walls.map(r=>`<article class="suspect-wall-card ${esc(String(cell(r,'Visual State')).toLowerCase())}">${portrait(cell(r,'Character ID'),cell(r,'Character'))}<div><span>${esc(cell(r,'Progress'))}</span><h4>${esc(cell(r,'Character'))}</h4><strong>${esc(cell(r,'Pin Type'))}</strong><p>${esc(cell(r,'Text'))}</p></div></article>`).join('')||'<div class="empty">Brak przypiętych hipotez.</div>'}</div>`;
     } else if(characterCaseTab==='memory'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MGŁA PAMIĘCI</div><h3>Kogo warto sobie przypomnieć?</h3></div><span class="status-pill muted">NIE WPŁYWA NA OCENĘ KSIĄŻKI</span></div><div class="memory-fog-grid">${memory.sort((a,b)=>(numv(cell(b,'Memory Score'))||0)-(numv(cell(a,'Memory Score'))||0)).slice(0,24).map(r=>`<button class="memory-fog-card" data-character-id="${esc(cell(r,'Character ID'))}" style="--fog:${Math.max(20,100-(numv(cell(r,'UI Opacity %'))||100))}%"><strong>${esc(cell(r,'Character'))}</strong><span>${esc(cell(r,'Memory State'))}</span><small>${n(cell(r,'Memory Score'),0)}/100</small></button>`).join('')||'<div class="empty">Brak modelu pamięci.</div>'}</div>`;
     } else if(characterCaseTab==='unlocks'){
