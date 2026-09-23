@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.7';
+  const FRONTEND_VERSION = '6.3.8';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
