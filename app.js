@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.8';
+  const FRONTEND_VERSION = '6.4.0';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -582,6 +582,58 @@
     $$('.casefile-tab',$('#characterCaseTabs')).forEach(b=>b.classList.toggle('active',b.dataset.characterCaseTab===characterCaseTab));
     renderCharacterCaseStage(stage,bookId,dossiers,cast);
   }
+  function relationConstellationHtml_(rel,bookId,portrait){
+    if(!rel.length) return '<div class="empty">Brak jawnych relacji.</div>';
+    const nodeMap=new Map();
+    rel.forEach(r=>{
+      const aid=String(cell(r,'From Character ID')||''), bid=String(cell(r,'To Character ID')||'');
+      const a=String(cell(r,'From')||aid), b=String(cell(r,'To')||bid);
+      if(aid&&!nodeMap.has(aid)) nodeMap.set(aid,{id:aid,name:a});
+      if(bid&&!nodeMap.has(bid)) nodeMap.set(bid,{id:bid,name:b});
+    });
+    const nodes=[...nodeMap.values()].sort((x,y)=>x.name.localeCompare(y.name,'pl'));
+    const cols=nodes.length<=8?4:nodes.length<=15?5:6;
+    const rows=Math.max(1,Math.ceil(nodes.length/cols));
+    const width=1000, height=Math.max(430,160+rows*170), marginX=95, marginY=85;
+    const positions=new Map();
+    for(let row=0;row<rows;row++){
+      const start=row*cols, rowNodes=nodes.slice(start,start+cols), count=rowNodes.length;
+      const span=width-(2*marginX), step=count<=1?0:span/(count-1);
+      rowNodes.forEach((node,col)=>{
+        const x=count===1?width/2:marginX+(step*col);
+        const y=rows===1?height/2:marginY+((height-(2*marginY))*row/(rows-1));
+        positions.set(node.id,{x,y});
+      });
+    }
+    const edges=rel.map(r=>{
+      const from=String(cell(r,'From Character ID')||''), to=String(cell(r,'To Character ID')||'');
+      const p1=positions.get(from),p2=positions.get(to); if(!p1||!p2)return '';
+      const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
+      return `<g class="relation-constellation-edge" data-from="${esc(from)}" data-to="${esc(to)}"><line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"></line><text x="${mx}" y="${my-7}" text-anchor="middle">${esc(humanRelation(cell(r,'Relation')))}</text></g>`;
+    }).join('');
+    const nodeHtml=nodes.map(node=>{
+      const p=positions.get(node.id),left=(p.x/width*100).toFixed(2),top=(p.y/height*100).toFixed(2);
+      return `<button type="button" class="relation-constellation-node" data-character-id="${esc(node.id)}" style="left:${left}%;top:${top}%">${portrait(node.id,node.name)}<strong>${esc(node.name)}</strong></button>`;
+    }).join('');
+    return `<div class="relation-constellation-scroll"><div class="relation-constellation" style="height:${height}px"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${edges}</svg><div class="relation-constellation-node-layer">${nodeHtml}</div></div></div><p class="relation-constellation-note">Układ jest alfabetyczny i służy wyłącznie pamięci oraz nawigacji. Pozycja, liczba linii i miejsce na tablicy nie oznaczają ważności, podejrzenia ani winy.</p>`;
+  }
+  function wireRelationConstellation_(stage){
+    const graph=$('.relation-constellation',stage); if(!graph)return;
+    const nodes=$('.relation-constellation-node',graph),edges=$('.relation-constellation-edge',graph);
+    const clear=()=>{nodes.forEach(n=>n.classList.remove('dim','focus'));edges.forEach(e=>e.classList.remove('dim','active'));};
+    const focus=id=>{
+      const connected=new Set([id]);
+      edges.forEach(e=>{const a=e.dataset.from,b=e.dataset.to;if(a===id)connected.add(b);if(b===id)connected.add(a);});
+      nodes.forEach(n=>{const nid=n.dataset.characterId;n.classList.toggle('focus',nid===id);n.classList.toggle('dim',!connected.has(nid));});
+      edges.forEach(e=>{const active=e.dataset.from===id||e.dataset.to===id;e.classList.toggle('active',active);e.classList.toggle('dim',!active);});
+    };
+    nodes.forEach(n=>{
+      n.addEventListener('mouseenter',()=>focus(n.dataset.characterId));
+      n.addEventListener('mouseleave',clear);
+      n.addEventListener('focus',()=>focus(n.dataset.characterId));
+      n.addEventListener('blur',clear);
+    });
+  }
   function renderCharacterCaseStage(stage,bookId,dossiers,cast){
     const rel=rowsForBook('relationGraphFeed',bookId).length?rowsForBook('relationGraphFeed',bookId):rowsForBook('characterRelations',bookId).filter(r=>boolv(cell(r,'Safe Now?')));
     const collisions=rowsForBook('visualCollisionBoard',bookId);
@@ -592,7 +644,9 @@
     const memory=rowsForBook('characterMemoryState',bookId), unlocks=rowsForBook('characterUnlocks',bookId), scene=rowsForBook('caseSceneState',bookId)[0]||null;
     const portrait=(id,name)=>{const url=portraitUrlFor(id,bookId);return url?portraitImgHtml_(url,name,characterInitials(name),true):`<div class="mini-face">${esc(characterInitials(name))}</div>`;};
     if(characterCaseTab==='relations'){
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ</div><h3>${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a)}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b)}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div>`;
+      const nodeCount=new Set(rel.flatMap(r=>[String(cell(r,'From Character ID')||''),String(cell(r,'To Character ID')||'')]).filter(Boolean)).size;
+      const ledger=`<details class="relation-ledger"><summary>Rejestr krawędzi · ${rel.length}</summary><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a)}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b)}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div></details>`;
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ · CONSTELLATION</div><h3>${nodeCount} postaci · ${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div>${relationConstellationHtml_(rel,bookId,portrait)}${ledger}`;
     } else if(characterCaseTab==='collisions'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">NIE POMYL ICH</div><h3>${collisions.length} par do rozróżnienia</h3></div><span class="status-pill muted">POMOC PAMIĘCIOWA</span></div><div class="visual-collision-grid">${collisions.map(r=>`<article class="visual-collision-card"><div class="visual-pair"><button data-character-id="${esc(cell(r,'Character A ID'))}">${portrait(cell(r,'Character A ID'),cell(r,'Character A'))}<strong>${esc(cell(r,'Character A'))}</strong></button><span>≠</span><button data-character-id="${esc(cell(r,'Character B ID'))}">${portrait(cell(r,'Character B ID'),cell(r,'Character B'))}<strong>${esc(cell(r,'Character B'))}</strong></button></div><p>${esc(cell(r,'Safe Disambiguator'))}</p><small>ryzyko pomyłki ${esc(cell(r,'Score'))}/100</small></article>`).join('')||'<div class="empty">Brak par do rozróżnienia.</div>'}</div>`;
     } else if(characterCaseTab==='locations'){
@@ -619,12 +673,12 @@
       const snapCard=activeSnapshot?`<div class="snapshot-grid"><article class="snapshot-card"><div><span>${esc(cell(activeSnapshot,'Snapshot ID'))}</span><strong>${esc(cell(activeSnapshot,'Progress'))}</strong></div><p>${esc(cell(activeSnapshot,'Safe Cast N'))} postaci · ${esc(cell(activeSnapshot,'Relations N'))} relacji · ${esc(cell(activeSnapshot,'Locations N'))} miejsc</p></article></div>`:'';
       const deltaCard=activeDelta?`<div class="case-delta-list"><div class="case-delta-row"><strong>${esc(cell(activeDelta,'Delta Type'))}</strong><span>postacie ${esc(cell(activeDelta,'Cast Δ'))} · relacje ${esc(cell(activeDelta,'Relations Δ'))} · miejsca ${esc(cell(activeDelta,'Locations Δ'))} · portrety ${esc(cell(activeDelta,'Portrait-ready Δ'))}</span></div></div>`:'';
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ODTWARZANIE SPRAWY · TIME MACHINE</div><h3>Co Cockpit wiedział wtedy?</h3></div><span class="status-pill muted">BEZ BACKFILLU</span></div>${selector}${focus}${snapCard}${deltaCard}`;
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ODTWARZANIE SPRAWY</div><h3>Co Cockpit wiedział wtedy?</h3></div></div><div class="playback-strip">${playback.map((r,i)=>`<article class="playback-frame"><b>${i+1}</b><div><span>${esc(cell(r,'Progress'))}</span><p>${esc(cell(r,'Playback Caption'))}</p><small>${esc(cell(r,'Safe Cast N'))} postaci · ${esc(cell(r,'Locations N'))} miejsc · ${esc(cell(r,'Portrait N'))} portretów</small></div></article>`).join('')}</div><div class="snapshot-grid">${snaps.map(r=>`<article class="snapshot-card"><div><span>${esc(cell(r,'Snapshot ID'))}</span><strong>${esc(cell(r,'Progress'))}</strong></div><p>${esc(cell(r,'Safe Cast N'))} postaci · ${esc(cell(r,'Relations N'))} relacji · ${esc(cell(r,'Locations N'))} miejsc</p></article>`).join('')}</div><div class="case-delta-list">${deltas.map(r=>`<div class="case-delta-row"><strong>${esc(cell(r,'Delta Type'))}</strong><span>postacie ${esc(cell(r,'Cast Δ'))} · relacje ${esc(cell(r,'Relations Δ'))} · miejsca ${esc(cell(r,'Locations Δ'))}</span></div>`).join('')}</div>`;
     } else {
       const rows=dossiers.length?dossiers:cast.map(r=>({'Book ID':cell(r,'Book ID'),'Character ID':cell(r,'Character ID'),'Character':cell(r,'Display Name'),'Role':cell(r,'Book Role'),'Safe Fact':cell(r,'Who is this?'),'Gate':cell(r,'Visibility Gate')}));
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">AKTA SPRAWY</div><h3>${rows.length} kart postaci</h3></div></div><div class="case-file-grid">${rows.map(r=>{const id=cell(r,'Character ID'), name=cell(r,'Character','Display Name'), mem=rowForCharacter('characterMemoryState',id,bookId)||{}, unlock=rowForCharacter('characterUnlocks',id,bookId)||{}, hasPortrait=!!portraitUrlFor(id,bookId);return `<button type="button" class="case-file-card" data-character-id="${esc(id)}">${characterPortrait(id,name,'card',bookId)}<div class="case-file-card-copy"><div class="case-card-top"><span>${esc(humanRole(cell(r,'Role')||'POSTAĆ'))}</span><em>${esc(cell(mem,'Memory State')||cell(r,'Recall Class')||'')}</em></div><h4>${esc(name)}</h4><p>${esc(cell(r,'Safe Fact')||'Bezpieczna kartoteka postaci.')}</p><div class="case-card-flags">${hasPortrait?'<span class="case-badge portrait">PORTRET</span>':''}<span class="case-badge neutral">${esc(cell(unlock,'Unlock Level')||'POZNANA')}</span></div><div class="progress-track"><i style="width:${clamp(cell(unlock,'Progress %')||17)}%"></i></div></div></button>`}).join('')||'<div class="empty">Brak akt.</div>'}</div>`;
     }
-    $$('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    wireRelationConstellation_(stage);
     $$('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
   }
   function renderCharacters(){
