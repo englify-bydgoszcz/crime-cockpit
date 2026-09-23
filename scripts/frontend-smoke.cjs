@@ -15,9 +15,9 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '6.5.0'",
-  "demo-data.js?v=6.5.0",
-  "app.js?v=6.5.0"
+  "const FRONTEND_VERSION = '6.6.0'",
+  "demo-data.js?v=6.6.0",
+  "app.js?v=6.6.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -64,5 +64,14 @@ if (!app.includes('Gęstość kropek nie oznacza ważności, podejrzenia ani win
 }
 if (!app.includes('Nie rekonstruuję go po fakcie z późniejszej wiedzy.')) {
   throw new Error('Character Trail must not reconstruct missing historical traces from later knowledge.');
+}
+if (!app.includes('CASE PULSE') || !app.includes("rowsForBook('caseDelta'") || !css.includes('.case-pulse{')) {
+  throw new Error('Case Pulse current-checkpoint delta surface is missing.');
+}
+if (!app.includes('Tylko suche przyrosty bezpiecznych danych. Zero interpretacji fabuły.')) {
+  throw new Error('Case Pulse spoiler-safe non-interpretation contract is missing.');
+}
+if (!app.includes("'physician of':'lekarz'") || !app.includes("'assistant to':'asystent'") || !app.includes("'prospective client of':'ma umówione spotkanie z'")) {
+  throw new Error('New p54 relation labels are not localized.');
 }
 console.log('Crime Cockpit frontend smoke: PASS');
