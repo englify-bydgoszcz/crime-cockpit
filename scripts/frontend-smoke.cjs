@@ -15,9 +15,9 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '6.4.1'",
-  "demo-data.js?v=6.4.1",
-  "app.js?v=6.4.1"
+  "const FRONTEND_VERSION = '6.5.0'",
+  "demo-data.js?v=6.5.0",
+  "app.js?v=6.5.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -55,5 +55,14 @@ if (!css.includes('.relation-constellation-edge{opacity:.035') || !css.includes(
 }
 if (!app.includes("'friend of':'przyjaciel'") || !app.includes("'daughter of':'córka'") || !app.includes("'governess / teacher of':'guwernantka / nauczycielka'")) {
   throw new Error('Polish relation label map is incomplete.');
+}
+if (!app.includes('characterTrailHtml_') || !app.includes("rowForCharacter('characterEncounterTrace'") || !css.includes('.character-trail-axis{')) {
+  throw new Error('Character Trail dossier surface is missing.');
+}
+if (!app.includes('Gęstość kropek nie oznacza ważności, podejrzenia ani winy.')) {
+  throw new Error('Character Trail non-inference disclaimer is missing.');
+}
+if (!app.includes('Nie rekonstruuję go po fakcie z późniejszej wiedzy.')) {
+  throw new Error('Character Trail must not reconstruct missing historical traces from later knowledge.');
 }
 console.log('Crime Cockpit frontend smoke: PASS');
