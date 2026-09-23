@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.5.0';
+  const FRONTEND_VERSION = '6.6.0';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -538,7 +538,10 @@
       'later married to':'późniejsze małżeństwo',
       'son of':'syn',
       'twin brother of':'brat bliźniak',
-      'worked for':'pracowała dla'
+      'worked for':'pracowała dla',
+      'physician of':'lekarz',
+      'assistant to':'asystent',
+      'prospective client of':'ma umówione spotkanie z'
     })[x] || v || 'relacja';
   }
   function humanRole(v=''){
@@ -573,6 +576,7 @@
     const cls=s.startsWith('DOWNWEIGHTED')?'down':s.startsWith('SUSPECTED')?'suspect':'neutral';
     return `<span class="case-badge ${cls}">${esc(s.replace('SUSPECTED / ','').replace('SUSPECTED','PODEJRZENIE').replace('DOWNWEIGHTED / ','ODRZUCONE · '))}</span>`;
   }
+  function deltaSigned(v){ const n=Number(String(v??0).replace(',','.')); return Number.isFinite(n)?(n>0?'+'+n:String(n)):'0'; }
   function renderCharacterCaseHub(){
     const hero=$('#characterCaseHero'), stage=$('#characterCaseStage'); if(!hero||!stage)return;
     const dossierBooks=[...new Set(moduleRows('caseFileDossiers').map(r=>String(cell(r,'Book ID'))).filter(Boolean))];
@@ -587,12 +591,17 @@
     const portraitN=rowsForBook('caseFileAssets',bookId).filter(r=>portraitUrlFor(cell(r,'Character ID'),bookId)).length;
     const locations=rowsForBook('bookLocations',bookId).filter(r=>boolv(cell(r,'Safe Now?')));
     const pins=rowsForBook('characterTheoryPins',bookId);
-    const snap=rowsForBook('checkpointSnapshots',bookId)[0]||{};
+    const snapshots=rowsForBook('checkpointSnapshots',bookId);
+    const snap=snapshots[snapshots.length-1]||{};
+    const deltaRows=rowsForBook('caseDelta',bookId).filter(r=>String(cell(r,'Status')||'').toUpperCase()!=='RETIRED');
+    const latestDelta=deltaRows[deltaRows.length-1]||null;
+    const deltaFrom=latestDelta?snapshots.find(r=>String(cell(r,'Snapshot ID'))===String(cell(latestDelta,'From Snapshot'))):null;
     const progress=cell(sync,'Applied Progress','Latest RR Progress')||cell(snap,'Progress')||'—';
     const loadVal=cell(load,'Memory Support Load'); const loadClass=cell(load,'Load Class')||'—';
     const archive=bookId!==String(data.current.id||'');
     const opts=dossierBooks.map(id=>{const b=bookById(id)||{};return `<option value="${esc(id)}" ${id===bookId?'selected':''}>${esc(b.title||id)}</option>`}).join('');
-    hero.innerHTML=`<div class="casefile-hero-copy"><div class="section-kicker">${archive?'ARCHIWALNE AKTA':'AKTA BIEŻĄCEJ SPRAWY'} · ${esc(bookId||'—')}</div><div class="case-book-switch"><h2>${esc(book.title||data.current.title||'Książka')}</h2><select id="caseBookSelect">${opts}</select></div><p>${archive?'Pełny widok po lekturze. Możemy korzystać z całego tekstu i wszystkich bezpiecznych danych post-read.':'Widok operacyjny zna tylko stan do potwierdzonego checkpointu. Każda karta, relacja, lokalizacja i teoria dziedziczy Spoiler Firewall.'}</p><div class="casefile-hero-chips"><span class="chip brass">postęp: ${esc(progress)}</span><span class="chip green">${archive?'PO LEKTURZE':'BEZPIECZNE DO TEGO MIEJSCA'}</span><span class="chip">${esc(safeN)} postaci</span><span class="chip">${esc(locations.length)} miejsc</span><span class="chip">${esc(pins.length)} przypięte teorie</span></div></div><div class="casefile-hero-metrics"><div><span>Wsparcie pamięci</span><strong>${esc(loadVal|| (archive?'ARCHIWUM':'—'))}</strong><small>${esc(loadClass)}</small></div><div><span>Portrety</span><strong>${esc(portraitN)}</strong><small>dostępnych teraz</small></div><div><span>Granica wiedzy</span><strong>${esc(archive?'pełna książka':cell(sync,'Safe Through')||'—')}</strong><small>${archive?'READ COMPLETE':`stop przed ${esc(cell(sync,'Stop Before')||'—')}`}</small></div></div>`;
+    const pulse=(!archive&&latestDelta&&String(cell(latestDelta,'From Snapshot')||'').toUpperCase()!=='NONE')?`<div class="case-pulse" aria-label="Zmiany od poprzedniego checkpointu"><div class="case-pulse-label"><span>CASE PULSE</span><strong>Od ${esc(cell(deltaFrom,'Progress')||cell(latestDelta,'From Snapshot')||'poprzedniego checkpointu')}</strong></div><div class="case-pulse-stats"><span><b>${deltaSigned(cell(latestDelta,'Cast Δ'))}</b> postaci</span><span><b>${deltaSigned(cell(latestDelta,'Relations Δ'))}</b> relacje</span><span><b>${deltaSigned(cell(latestDelta,'Locations Δ'))}</b> miejsca</span><span><b>${deltaSigned(cell(latestDelta,'Portrait-ready Δ'))}</b> portrait-ready</span></div><small>Tylko suche przyrosty bezpiecznych danych. Zero interpretacji fabuły.</small></div>`:'';
+    hero.innerHTML=`<div class="casefile-hero-copy"><div class="section-kicker">${archive?'ARCHIWALNE AKTA':'AKTA BIEŻĄCEJ SPRAWY'} · ${esc(bookId||'—')}</div><div class="case-book-switch"><h2>${esc(book.title||data.current.title||'Książka')}</h2><select id="caseBookSelect">${opts}</select></div><p>${archive?'Pełny widok po lekturze. Możemy korzystać z całego tekstu i wszystkich bezpiecznych danych post-read.':'Widok operacyjny zna tylko stan do potwierdzonego checkpointu. Każda karta, relacja, lokalizacja i teoria dziedziczy Spoiler Firewall.'}</p><div class="casefile-hero-chips"><span class="chip brass">postęp: ${esc(progress)}</span><span class="chip green">${archive?'PO LEKTURZE':'BEZPIECZNE DO TEGO MIEJSCA'}</span><span class="chip">${esc(safeN)} postaci</span><span class="chip">${esc(locations.length)} miejsc</span><span class="chip">${esc(pins.length)} przypięte teorie</span></div>${pulse}</div><div class="casefile-hero-metrics"><div><span>Wsparcie pamięci</span><strong>${esc(loadVal|| (archive?'ARCHIWUM':'—'))}</strong><small>${esc(loadClass)}</small></div><div><span>Portrety</span><strong>${esc(portraitN)}</strong><small>dostępnych teraz</small></div><div><span>Granica wiedzy</span><strong>${esc(archive?'pełna książka':cell(sync,'Safe Through')||'—')}</strong><small>${archive?'READ COMPLETE':`stop przed ${esc(cell(sync,'Stop Before')||'—')}`}</small></div></div>`;
     const sel=$('#caseBookSelect'); if(sel) sel.onchange=()=>{characterCaseBookId=sel.value;casePlaybackIndex=-1;renderCharacters();};
     $$('.casefile-tab',$('#characterCaseTabs')).forEach(b=>b.classList.toggle('active',b.dataset.characterCaseTab===characterCaseTab));
     renderCharacterCaseStage(stage,bookId,dossiers,cast);
