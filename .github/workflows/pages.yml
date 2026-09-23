@@ -29,15 +29,31 @@ jobs:
         with:
           enablement: true
 
-      - name: Unpack Crime Cockpit
+      - name: Build code-only Pages artifact
         run: |
           rm -rf dist
           mkdir -p dist
-          unzip -q site.zip -d dist
-          cp app.js dist/app.js
+
+          if [ -f site.zip ]; then
+            unzip -q site.zip -d dist
+          fi
+
           cp index.html dist/index.html
-          mkdir -p dist/assets
-          cp -R assets/. dist/assets/
+          cp app.js dist/app.js
+
+          if [ -f styles.css ]; then cp styles.css dist/styles.css; fi
+          if [ -f demo-data.js ]; then cp demo-data.js dist/demo-data.js; fi
+
+          # Portrait/media binaries are never deployed from GitHub.
+          rm -rf dist/assets
+          rm -rf dist/apps-script
+          rm -f dist/site.zip
+          touch dist/.nojekyll
+
+          test -f dist/index.html
+          test -f dist/app.js
+          test -f dist/styles.css
+          test -f dist/demo-data.js
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
