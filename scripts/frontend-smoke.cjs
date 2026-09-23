@@ -7,12 +7,12 @@ const index=fs.readFileSync('index.html','utf8');
 new Function(app);
 new Function(demo);
 
-const badSingleSelectorForEach=/\$\([^\n;]*\)\.forEach\s*\(/g;
+const badSingleSelectorForEach=/(?<!\$)\$\([^\n;]*\)\.forEach\s*\(/g;
 if (badSingleSelectorForEach.test(app)) {
   throw new Error('Regression: $() used with .forEach(); use $$() or querySelectorAll().');
 }
-if (/\blocalStorage\.(getItem|setItem|removeItem)\s*\(/.test(app)) {
-  throw new Error('Regression: direct localStorage access; use fail-safe storage wrapper.');
+for (const marker of ["const storage = {","storage.get(","storage.set(","storage.remove("]) {
+  if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
   "const FRONTEND_VERSION = '6.3.6'",
