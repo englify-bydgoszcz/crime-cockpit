@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.5';
+  const FRONTEND_VERSION = '6.3.6';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -11,10 +11,25 @@
   let characterCaseBookId = '';
   let casePlaybackIndex = -1;
 
+  const storage = {
+    get(key, fallback='') {
+      try { const v=window.localStorage.getItem(key); return v==null ? fallback : v; }
+      catch (err) { console.warn('Crime Cockpit storage unavailable',err); return fallback; }
+    },
+    set(key, value) {
+      try { window.localStorage.setItem(key,value); return true; }
+      catch (err) { console.warn('Crime Cockpit storage write unavailable',err); return false; }
+    },
+    remove(key) {
+      try { window.localStorage.removeItem(key); return true; }
+      catch (err) { console.warn('Crime Cockpit storage remove unavailable',err); return false; }
+    }
+  };
+
   const state = {
-    apiUrl: localStorage.getItem('crimeCockpitApiUrl') || '',
-    token: localStorage.getItem('crimeCockpitToken') || '',
-    mode: localStorage.getItem('crimeCockpitViewMode') || 'owner'
+    apiUrl: storage.get('crimeCockpitApiUrl',''),
+    token: storage.get('crimeCockpitToken',''),
+    mode: storage.get('crimeCockpitViewMode','owner')
   };
 
   const fallbackModules = [
@@ -1001,11 +1016,11 @@
     $$('[data-close-dialog]').forEach(el=>el.addEventListener('click',()=>document.getElementById(el.dataset.closeDialog).close()));
     $('#commandInput').addEventListener('input',e=>renderCommandResults(e.target.value));
     document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='k'){e.preventDefault();openCommand()} if(e.key==='Escape'&&$('#commandDialog').open)$('#commandDialog').close()});
-    $('#settingsForm').addEventListener('submit',e=>{ if(e.submitter?.value!=='save')return; e.preventDefault(); state.apiUrl=$('#apiUrlInput').value.trim(); state.token=$('#tokenInput').value.trim(); localStorage.setItem('crimeCockpitApiUrl',state.apiUrl); localStorage.setItem('crimeCockpitToken',state.token); $('#settingsDialog').close(); loadData(); });
-    $('#clearConfigBtn').addEventListener('click',()=>{state.apiUrl='';state.token='';localStorage.removeItem('crimeCockpitApiUrl');localStorage.removeItem('crimeCockpitToken');$('#apiUrlInput').value='';$('#tokenInput').value='';toast('Połączenie LIVE wyczyszczone');});
+    $('#settingsForm').addEventListener('submit',e=>{ if(e.submitter?.value!=='save')return; e.preventDefault(); state.apiUrl=$('#apiUrlInput').value.trim(); state.token=$('#tokenInput').value.trim(); storage.set('crimeCockpitApiUrl',state.apiUrl); storage.set('crimeCockpitToken',state.token); $('#settingsDialog').close(); loadData(); });
+    $('#clearConfigBtn').addEventListener('click',()=>{state.apiUrl='';state.token='';storage.remove('crimeCockpitApiUrl');storage.remove('crimeCockpitToken');$('#apiUrlInput').value='';$('#tokenInput').value='';toast('Połączenie LIVE wyczyszczone');});
     document.addEventListener('pointermove',e=>{document.documentElement.style.setProperty('--mx',`${e.clientX}px`);document.documentElement.style.setProperty('--my',`${e.clientY}px`)});
   }
-  function setMode(mode){state.mode=mode;localStorage.setItem('crimeCockpitViewMode',mode);renderAll();toast(mode==='expert'?'Tryb ekspercki włączony':'Tryb prosty włączony')}
+  function setMode(mode){state.mode=mode;storage.set('crimeCockpitViewMode',mode);renderAll();toast(mode==='expert'?'Tryb ekspercki włączony':'Tryb prosty włączony')}
   function openSettings(){ $('#apiUrlInput').value=state.apiUrl; $('#tokenInput').value=state.token; $('#settingsDialog').showModal(); }
 
   document.addEventListener('DOMContentLoaded',()=>{bindEvents();loadData(false)});
