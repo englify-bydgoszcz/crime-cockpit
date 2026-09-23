@@ -614,8 +614,8 @@
       const rows=dossiers.length?dossiers:cast.map(r=>({'Book ID':cell(r,'Book ID'),'Character ID':cell(r,'Character ID'),'Character':cell(r,'Display Name'),'Role':cell(r,'Book Role'),'Safe Fact':cell(r,'Who is this?'),'Gate':cell(r,'Visibility Gate')}));
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">AKTA SPRAWY</div><h3>${rows.length} kart postaci</h3></div></div><div class="case-file-grid">${rows.map(r=>{const id=cell(r,'Character ID'), name=cell(r,'Character','Display Name'), mem=rowForCharacter('characterMemoryState',id,bookId)||{}, unlock=rowForCharacter('characterUnlocks',id,bookId)||{}, hasPortrait=!!portraitUrlFor(id,bookId);return `<button type="button" class="case-file-card" data-character-id="${esc(id)}">${characterPortrait(id,name,'card',bookId)}<div class="case-file-card-copy"><div class="case-card-top"><span>${esc(humanRole(cell(r,'Role')||'POSTAĆ'))}</span><em>${esc(cell(mem,'Memory State')||cell(r,'Recall Class')||'')}</em></div><h4>${esc(name)}</h4><p>${esc(cell(r,'Safe Fact')||'Bezpieczna kartoteka postaci.')}</p><div class="case-card-flags">${hasPortrait?'<span class="case-badge portrait">PORTRET</span>':''}<span class="case-badge neutral">${esc(cell(unlock,'Unlock Level')||'POZNANA')}</span></div><div class="progress-track"><i style="width:${clamp(cell(unlock,'Progress %')||17)}%"></i></div></div></button>`}).join('')||'<div class="empty">Brak akt.</div>'}</div>`;
     }
-    $('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
-    $('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
+    $$('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $$('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
   }
   function renderCharacters(){
     const summary=$('#characterSummary'), groupsRoot=$('#characterGroups'), recall=$('#currentCharacterRecall'), search=$('#characterSearch'), bookFilter=$('#characterBookFilter');
@@ -1010,7 +1010,7 @@
     $('#currentDossierBtn').addEventListener('click',()=>openDossier(data.current));
     $('#librarySearch').addEventListener('input',renderLibrary); $('#lifecycleFilter').addEventListener('change',renderLibrary);
     $('#characterSearch').addEventListener('input',renderCharacters); $('#characterBookFilter').addEventListener('change',renderCharacters);
-    $('[data-character-case-tab]').forEach(el=>el.addEventListener('click',()=>{const next=el.dataset.characterCaseTab||'files';if(next==='time'&&characterCaseTab!=='time')casePlaybackIndex=-1;characterCaseTab=next;renderCharacters();}));
+    $$('[data-character-case-tab]').forEach(el=>el.addEventListener('click',()=>{const next=el.dataset.characterCaseTab||'files';if(next==='time'&&characterCaseTab!=='time')casePlaybackIndex=-1;characterCaseTab=next;renderCharacters();}));
     $('#readingRoomBookFilter').addEventListener('change',renderReadingRoom);
     $$('[data-go]').forEach(el=>el.addEventListener('click',()=>setView(el.dataset.go)));
     $$('[data-close-dialog]').forEach(el=>el.addEventListener('click',()=>document.getElementById(el.dataset.closeDialog).close()));
