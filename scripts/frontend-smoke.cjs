@@ -7,7 +7,7 @@ const index=fs.readFileSync('index.html','utf8');
 new Function(app);
 new Function(demo);
 
-const badSingleSelectorForEach=/(?<!\$)\$\([^\n;]*\)\.forEach\s*\(/g;
+const badSingleSelectorForEach=/(?<!\$)\$\([^)]*\)\s*\.forEach\s*\(/g;
 if (badSingleSelectorForEach.test(app)) {
   throw new Error('Regression: $() used with .forEach(); use $$() or querySelectorAll().');
 }
