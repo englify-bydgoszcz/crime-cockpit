@@ -1,0 +1,38 @@
+name: One-time code-only source migration
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract text source and remove binary bundle
+        run: |
+          if [ ! -f site.zip ]; then
+            echo "site.zip already removed; nothing to migrate."
+            exit 0
+          fi
+
+          unzip -p site.zip styles.css > styles.css
+          unzip -p site.zip demo-data.js > demo-data.js
+          touch .nojekyll
+
+          test -s styles.css
+          test -s demo-data.js
+
+          git rm site.zip
+          git add styles.css demo-data.js .nojekyll
+
+          git config user.name "crime-cockpit-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git commit -m "Extract frontend source and remove binary site bundle"
+          git push
