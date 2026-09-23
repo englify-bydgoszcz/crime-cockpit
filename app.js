@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.3';
+  const FRONTEND_VERSION = '6.3.4';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -9,6 +9,7 @@
   let achievementCategoryFilter = '';
   let characterCaseTab = 'files';
   let characterCaseBookId = '';
+  let casePlaybackIndex = -1;
 
   const state = {
     apiUrl: localStorage.getItem('crimeCockpitApiUrl') || '',
@@ -544,7 +545,7 @@
     const archive=bookId!==String(data.current.id||'');
     const opts=dossierBooks.map(id=>{const b=bookById(id)||{};return `<option value="${esc(id)}" ${id===bookId?'selected':''}>${esc(b.title||id)}</option>`}).join('');
     hero.innerHTML=`<div class="casefile-hero-copy"><div class="section-kicker">${archive?'ARCHIWALNE AKTA':'AKTA BIEŻĄCEJ SPRAWY'} · ${esc(bookId||'—')}</div><div class="case-book-switch"><h2>${esc(book.title||data.current.title||'Książka')}</h2><select id="caseBookSelect">${opts}</select></div><p>${archive?'Pełny widok po lekturze. Możemy korzystać z całego tekstu i wszystkich bezpiecznych danych post-read.':'Widok operacyjny zna tylko stan do potwierdzonego checkpointu. Każda karta, relacja, lokalizacja i teoria dziedziczy Spoiler Firewall.'}</p><div class="casefile-hero-chips"><span class="chip brass">postęp: ${esc(progress)}</span><span class="chip green">${archive?'PO LEKTURZE':'BEZPIECZNE DO TEGO MIEJSCA'}</span><span class="chip">${esc(safeN)} postaci</span><span class="chip">${esc(locations.length)} miejsc</span><span class="chip">${esc(pins.length)} przypięte teorie</span></div></div><div class="casefile-hero-metrics"><div><span>Wsparcie pamięci</span><strong>${esc(loadVal|| (archive?'ARCHIWUM':'—'))}</strong><small>${esc(loadClass)}</small></div><div><span>Portrety</span><strong>${esc(portraitN)}</strong><small>dostępnych teraz</small></div><div><span>Granica wiedzy</span><strong>${esc(archive?'pełna książka':cell(sync,'Safe Through')||'—')}</strong><small>${archive?'READ COMPLETE':`stop przed ${esc(cell(sync,'Stop Before')||'—')}`}</small></div></div>`;
-    const sel=$('#caseBookSelect'); if(sel) sel.onchange=()=>{characterCaseBookId=sel.value;renderCharacters();};
+    const sel=$('#caseBookSelect'); if(sel) sel.onchange=()=>{characterCaseBookId=sel.value;casePlaybackIndex=-1;renderCharacters();};
     $$('.casefile-tab',$('#characterCaseTabs')).forEach(b=>b.classList.toggle('active',b.dataset.characterCaseTab===characterCaseTab));
     renderCharacterCaseStage(stage,bookId,dossiers,cast);
   }
@@ -575,12 +576,23 @@
       const sceneCard=scene?`<article class="panel reentry-group"><div class="section-kicker">GDZIE JESTEM W HISTORII?</div><h3>${esc(cell(scene,'Headline')||'Bieżący stan sprawy')}</h3><div class="feature-list"><div class="feature-item"><span>Postacie do przypomnienia</span><strong>${esc(cell(scene,'Character Focus')||'—')}</strong></div><div class="feature-item"><span>Miejsca</span><strong>${esc(cell(scene,'Location Focus')||'—')}</strong></div><div class="feature-item"><span>Otwarte pytania</span><strong>${esc(cell(scene,'Theory Focus')||'—')}</strong></div><div class="feature-item"><span>Najlepsza pomoc</span><strong>${esc(cell(scene,'Recommended Aid')||'—')}</strong></div></div><p class="small-note">Rekonstrukcja korzysta wyłącznie z danych bezpiecznych dla bieżącej granicy wiedzy.</p></article>`:'';
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">WRACAM DO KSIĄŻKI</div><h3>30–60 sekund i wracasz do sprawy</h3></div></div>${sceneCard}<div class="reentry-grid">${group('POSTACIE',chars)}${group('MIEJSCA',locs)}${group('TWOJE TEORIE',theories)}</div>`;
     } else if(characterCaseTab==='time'){
+      const activeIndex=playback.length?Math.max(0,Math.min(casePlaybackIndex<0?playback.length-1:casePlaybackIndex,playback.length-1)):-1;
+      casePlaybackIndex=activeIndex;
+      const active=activeIndex>=0?playback[activeIndex]:null;
+      const activeSnapshot=active?snaps.find(r=>String(cell(r,'Snapshot ID'))===String(cell(active,'Snapshot ID'))):null;
+      const activeDelta=active?deltas.find(r=>String(cell(r,'To Snapshot'))===String(cell(active,'Snapshot ID'))):null;
+      const selector=playback.length?`<div class="casefile-tabs">${playback.map((r,i)=>`<button type="button" class="casefile-tab ${i===activeIndex?'active':''}" data-playback-index="${i}" aria-pressed="${i===activeIndex?'true':'false'}">#${i+1} · ${esc(cell(r,'Progress')||cell(r,'Frame ID'))}</button>`).join('')}</div>`:'';
+      const focus=active?`<article class="panel reentry-group"><div class="section-kicker">WYBRANY STAN · ${esc(cell(active,'Frame ID')||`#${activeIndex+1}`)}</div><h3>${esc(cell(active,'Progress')||'Checkpoint')}</h3><p>${esc(cell(active,'Playback Caption')||'Zamrożony stan sprawy.')}</p><div class="feature-list"><div class="feature-item"><span>Postacie</span><strong>${esc(cell(active,'Safe Cast N')||'0')}</strong></div><div class="feature-item"><span>Relacje</span><strong>${esc(cell(active,'Relations N')||cell(activeSnapshot,'Relations N')||'0')}</strong></div><div class="feature-item"><span>Miejsca</span><strong>${esc(cell(active,'Locations N')||'0')}</strong></div><div class="feature-item"><span>Portrety</span><strong>${esc(cell(active,'Portrait N')||cell(activeSnapshot,'Portrait-ready N')||'0')}</strong></div><div class="feature-item"><span>Twoje wpisy podejrzeń</span><strong>${esc(cell(active,'Suspicion N')||cell(activeSnapshot,'Suspicion Entries N')||'0')}</strong></div><div class="feature-item"><span>Wsparcie pamięci</span><strong>${esc(cell(active,'Case Load')||cell(activeSnapshot,'Case Load')||'—')}</strong></div></div><p class="small-note">Kadr jest niemutowalny: późniejsza wiedza nie jest dopisywana wstecz.</p></article>`:'<div class="empty">Brak zapisanych checkpointów dla tej książki.</div>';
+      const snapCard=activeSnapshot?`<div class="snapshot-grid"><article class="snapshot-card"><div><span>${esc(cell(activeSnapshot,'Snapshot ID'))}</span><strong>${esc(cell(activeSnapshot,'Progress'))}</strong></div><p>${esc(cell(activeSnapshot,'Safe Cast N'))} postaci · ${esc(cell(activeSnapshot,'Relations N'))} relacji · ${esc(cell(activeSnapshot,'Locations N'))} miejsc</p></article></div>`:'';
+      const deltaCard=activeDelta?`<div class="case-delta-list"><div class="case-delta-row"><strong>${esc(cell(activeDelta,'Delta Type'))}</strong><span>postacie ${esc(cell(activeDelta,'Cast Δ'))} · relacje ${esc(cell(activeDelta,'Relations Δ'))} · miejsca ${esc(cell(activeDelta,'Locations Δ'))} · portrety ${esc(cell(activeDelta,'Portrait-ready Δ'))}</span></div></div>`:'';
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ODTWARZANIE SPRAWY · TIME MACHINE</div><h3>Co Cockpit wiedział wtedy?</h3></div><span class="status-pill muted">BEZ BACKFILLU</span></div>${selector}${focus}${snapCard}${deltaCard}`;
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ODTWARZANIE SPRAWY</div><h3>Co Cockpit wiedział wtedy?</h3></div></div><div class="playback-strip">${playback.map((r,i)=>`<article class="playback-frame"><b>${i+1}</b><div><span>${esc(cell(r,'Progress'))}</span><p>${esc(cell(r,'Playback Caption'))}</p><small>${esc(cell(r,'Safe Cast N'))} postaci · ${esc(cell(r,'Locations N'))} miejsc · ${esc(cell(r,'Portrait N'))} portretów</small></div></article>`).join('')}</div><div class="snapshot-grid">${snaps.map(r=>`<article class="snapshot-card"><div><span>${esc(cell(r,'Snapshot ID'))}</span><strong>${esc(cell(r,'Progress'))}</strong></div><p>${esc(cell(r,'Safe Cast N'))} postaci · ${esc(cell(r,'Relations N'))} relacji · ${esc(cell(r,'Locations N'))} miejsc</p></article>`).join('')}</div><div class="case-delta-list">${deltas.map(r=>`<div class="case-delta-row"><strong>${esc(cell(r,'Delta Type'))}</strong><span>postacie ${esc(cell(r,'Cast Δ'))} · relacje ${esc(cell(r,'Relations Δ'))} · miejsca ${esc(cell(r,'Locations Δ'))}</span></div>`).join('')}</div>`;
     } else {
       const rows=dossiers.length?dossiers:cast.map(r=>({'Book ID':cell(r,'Book ID'),'Character ID':cell(r,'Character ID'),'Character':cell(r,'Display Name'),'Role':cell(r,'Book Role'),'Safe Fact':cell(r,'Who is this?'),'Gate':cell(r,'Visibility Gate')}));
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">AKTA SPRAWY</div><h3>${rows.length} kart postaci</h3></div></div><div class="case-file-grid">${rows.map(r=>{const id=cell(r,'Character ID'), name=cell(r,'Character','Display Name'), mem=rowForCharacter('characterMemoryState',id,bookId)||{}, unlock=rowForCharacter('characterUnlocks',id,bookId)||{}, hasPortrait=!!portraitUrlFor(id,bookId);return `<button type="button" class="case-file-card" data-character-id="${esc(id)}">${characterPortrait(id,name,'card',bookId)}<div class="case-file-card-copy"><div class="case-card-top"><span>${esc(humanRole(cell(r,'Role')||'POSTAĆ'))}</span><em>${esc(cell(mem,'Memory State')||cell(r,'Recall Class')||'')}</em></div><h4>${esc(name)}</h4><p>${esc(cell(r,'Safe Fact')||'Bezpieczna kartoteka postaci.')}</p><div class="case-card-flags">${hasPortrait?'<span class="case-badge portrait">PORTRET</span>':''}<span class="case-badge neutral">${esc(cell(unlock,'Unlock Level')||'POZNANA')}</span></div><div class="progress-track"><i style="width:${clamp(cell(unlock,'Progress %')||17)}%"></i></div></div></button>`}).join('')||'<div class="empty">Brak akt.</div>'}</div>`;
     }
-    $$('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
+    $('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
   }
   function renderCharacters(){
     const summary=$('#characterSummary'), groupsRoot=$('#characterGroups'), recall=$('#currentCharacterRecall'), search=$('#characterSearch'), bookFilter=$('#characterBookFilter');
@@ -975,7 +987,7 @@
     $('#currentDossierBtn').addEventListener('click',()=>openDossier(data.current));
     $('#librarySearch').addEventListener('input',renderLibrary); $('#lifecycleFilter').addEventListener('change',renderLibrary);
     $('#characterSearch').addEventListener('input',renderCharacters); $('#characterBookFilter').addEventListener('change',renderCharacters);
-    $$('[data-character-case-tab]').forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.characterCaseTab||'files';renderCharacters();}));
+    $('[data-character-case-tab]').forEach(el=>el.addEventListener('click',()=>{const next=el.dataset.characterCaseTab||'files';if(next==='time'&&characterCaseTab!=='time')casePlaybackIndex=-1;characterCaseTab=next;renderCharacters();}));
     $('#readingRoomBookFilter').addEventListener('change',renderReadingRoom);
     $$('[data-go]').forEach(el=>el.addEventListener('click',()=>setView(el.dataset.go)));
     $$('[data-close-dialog]').forEach(el=>el.addEventListener('click',()=>document.getElementById(el.dataset.closeDialog).close()));
