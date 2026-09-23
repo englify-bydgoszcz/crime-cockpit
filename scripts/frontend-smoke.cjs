@@ -15,11 +15,17 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '6.3.6'",
-  "demo-data.js?v=6.3.6",
-  "app.js?v=6.3.6"
+  "const FRONTEND_VERSION = '6.3.7'",
+  "demo-data.js?v=6.3.7",
+  "app.js?v=6.3.7"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
+}
+if (!app.includes("https://drive.google.com/thumbnail?id=")) {
+  throw new Error('Drive portrait resolver must use thumbnail endpoint.');
+}
+if (app.includes("drive.google.com/uc?export=view")) {
+  throw new Error('Legacy Drive uc portrait endpoint must not be used.');
 }
 console.log('Crime Cockpit frontend smoke: PASS');
