@@ -15,9 +15,9 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '6.3.8'",
-  "demo-data.js?v=6.3.8",
-  "app.js?v=6.3.8"
+  "const FRONTEND_VERSION = '6.4.0'",
+  "demo-data.js?v=6.4.0",
+  "app.js?v=6.4.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -34,5 +34,14 @@ if (!css.includes('.case-portrait img{') || !css.includes('object-fit:contain') 
 }
 if (css.includes('.case-portrait img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}')) {
   throw new Error('Regression: portrait cards must never return to object-fit:cover.');
+}
+if (!app.includes('relationConstellationHtml_') || !app.includes('wireRelationConstellation_') || !css.includes('.relation-constellation{')) {
+  throw new Error('Relation Constellation caseboard is missing.');
+}
+if (app.includes('ODTWARZANIE SPRAWY</div><h3>Co Cockpit wiedział wtedy?</h3></div></div><div class="playback-strip">')) {
+  throw new Error('Regression: legacy Time Machine renderer still overwrites checkpoint selector.');
+}
+if (!app.includes('ODTWARZANIE SPRAWY · TIME MACHINE') || !app.includes('data-playback-index')) {
+  throw new Error('Time Machine checkpoint selector is missing.');
 }
 console.log('Crime Cockpit frontend smoke: PASS');
