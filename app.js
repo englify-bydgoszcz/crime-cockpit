@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.3.6';
+  const FRONTEND_VERSION = '6.3.7';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -498,7 +498,7 @@
       const m=driveUrl.match(/\/d\/([A-Za-z0-9_-]+)/)||driveUrl.match(/[?&]id=([A-Za-z0-9_-]+)/);
       if(m) id=m[1];
     }
-    return id?('https://drive.google.com/uc?export=view&id='+encodeURIComponent(id)):'';
+    return id?('https://drive.google.com/thumbnail?id='+encodeURIComponent(id)+'&sz=w1200'):'';
   }
   function portraitUrlFor(characterId, bookId=''){
     const a=rowForCharacter('caseFileAssets',characterId,bookId)||rowForCharacter('caseFileAssets',characterId);
@@ -510,7 +510,7 @@
   }
   function humanPortraitState(v=''){
     const x=String(v||'').toUpperCase();
-    if(x.includes('BUNDLE READY')||x.includes('GENERATED IN CHAT')||x.includes('AVAILABLE')) return 'Portret dostępny';
+    if(x.includes('DRIVE READY')||x.includes('BUNDLE READY')||x.includes('GENERATED IN CHAT')||x.includes('AVAILABLE')) return 'Portret dostępny';
     if(x.includes('READY FOR GENERATION')) return 'Można wygenerować portret';
     return 'Monogram / placeholder';
   }
@@ -538,9 +538,19 @@
     };
     return map[x] || v || 'POSTAĆ';
   }
+  function portraitImgHtml_(url,name,initials,mini=false){
+    const cls=mini?'mini-face has-image':'case-portrait has-image';
+    const fallback=mini
+      ? `<b>${esc(initials)}</b>`
+      : `<b>${esc(initials)}</b><span>PORTRET<br/>NIEDOSTĘPNY</span>`;
+    return `<div class="${cls}" data-portrait-fallback="${esc(initials)}"><img src="${esc(url)}" alt="Syntetyczna wizualizacja postaci: ${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.remove('has-image');this.remove();this.parentElement.innerHTML='${fallback.replace(/'/g,"&#039;")}'"/>${mini?'':'<span>WIZUALIZACJA<br/>NIEKANONICZNA</span>'}</div>`;
+  }
   function characterPortrait(characterId,name,cls='',bookId=''){
     const url=portraitUrlFor(characterId,bookId||data.current.id||'');
-    if(url) return `<div class="case-portrait ${esc(cls)} has-image"><img src="${esc(url)}" alt="Syntetyczna wizualizacja postaci: ${esc(name)}" loading="lazy"/><span>WIZUALIZACJA<br/>NIEKANONICZNA</span></div>`;
+    if(url) {
+      const html=portraitImgHtml_(url,name,characterInitials(name),false);
+      return cls?html.replace('class="case-portrait has-image"',`class="case-portrait ${esc(cls)} has-image"`):html;
+    }
     return `<div class="case-portrait ${esc(cls)}"><b>${esc(characterInitials(name))}</b><span>PORTRET<br/>NIEDOSTĘPNY</span></div>`;
   }
   function suspicionBadge(stance){
@@ -580,7 +590,7 @@
     const pack=rowsForBook('reentryPackBuilder',bookId).filter(r=>String(cell(r,'Status')).toUpperCase()!=='RETIRED');
     const snaps=rowsForBook('checkpointSnapshots',bookId), deltas=rowsForBook('caseDelta',bookId), playback=rowsForBook('caseboardPlayback',bookId);
     const memory=rowsForBook('characterMemoryState',bookId), unlocks=rowsForBook('characterUnlocks',bookId), scene=rowsForBook('caseSceneState',bookId)[0]||null;
-    const portrait=(id,name)=>{const url=portraitUrlFor(id,bookId);return url?`<div class="mini-face has-image"><img src="${esc(url)}" alt=""/></div>`:`<div class="mini-face">${esc(characterInitials(name))}</div>`;};
+    const portrait=(id,name)=>{const url=portraitUrlFor(id,bookId);return url?portraitImgHtml_(url,name,characterInitials(name),true):`<div class="mini-face">${esc(characterInitials(name))}</div>`;};
     if(characterCaseTab==='relations'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ</div><h3>${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a)}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b)}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div>`;
     } else if(characterCaseTab==='collisions'){
