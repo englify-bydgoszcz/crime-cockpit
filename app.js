@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '6.4.0';
+  const FRONTEND_VERSION = '6.4.1';
   let data = null;
   let activeView = 'overview';
   let revealObserver = null;
@@ -524,7 +524,22 @@
   }
   function humanRelation(v=''){
     const x=String(v||'').toLowerCase();
-    return ({'father of':'ojciec','mother of':'matka','married to':'małżeństwo z','engaged to':'zaręczony/a z','twin brother of':'brat bliźniak','worked for':'pracowała dla'})[x] || v || 'relacja';
+    return ({
+      'investigates for':'prowadzi sprawę dla',
+      'daughter of':'córka',
+      'father of':'ojciec',
+      'mother of':'matka',
+      'married to':'małżeństwo',
+      'engaged to':'zaręczeni',
+      'half-sister of':'przyrodnia siostra',
+      'brother of':'brat',
+      'friend of':'przyjaciel',
+      'governess / teacher of':'guwernantka / nauczycielka',
+      'later married to':'późniejsze małżeństwo',
+      'son of':'syn',
+      'twin brother of':'brat bliźniak',
+      'worked for':'pracowała dla'
+    })[x] || v || 'relacja';
   }
   function humanRole(v=''){
     const x=String(v||'').toUpperCase();
@@ -582,56 +597,115 @@
     $$('.casefile-tab',$('#characterCaseTabs')).forEach(b=>b.classList.toggle('active',b.dataset.characterCaseTab===characterCaseTab));
     renderCharacterCaseStage(stage,bookId,dossiers,cast);
   }
-  function relationConstellationHtml_(rel,bookId,portrait){
-    if(!rel.length) return '<div class="empty">Brak jawnych relacji.</div>';
-    const nodeMap=new Map();
+  function relationComponents_(rel){
+    const nodes=new Map(),adj=new Map();
     rel.forEach(r=>{
-      const aid=String(cell(r,'From Character ID')||''), bid=String(cell(r,'To Character ID')||'');
-      const a=String(cell(r,'From')||aid), b=String(cell(r,'To')||bid);
-      if(aid&&!nodeMap.has(aid)) nodeMap.set(aid,{id:aid,name:a});
-      if(bid&&!nodeMap.has(bid)) nodeMap.set(bid,{id:bid,name:b});
+      const from=String(cell(r,'From Character ID')||''),to=String(cell(r,'To Character ID')||'');
+      const fromName=String(cell(r,'From')||from),toName=String(cell(r,'To')||to);
+      if(!from||!to)return;
+      if(!nodes.has(from))nodes.set(from,{id:from,name:fromName});
+      if(!nodes.has(to))nodes.set(to,{id:to,name:toName});
+      if(!adj.has(from))adj.set(from,new Set());
+      if(!adj.has(to))adj.set(to,new Set());
+      adj.get(from).add(to);adj.get(to).add(from);
     });
-    const nodes=[...nodeMap.values()].sort((x,y)=>x.name.localeCompare(y.name,'pl'));
-    const cols=nodes.length<=8?4:nodes.length<=15?5:6;
-    const rows=Math.max(1,Math.ceil(nodes.length/cols));
-    const width=1000, height=Math.max(430,160+rows*170), marginX=95, marginY=85;
+    const visited=new Set(),components=[];
+    [...nodes.keys()].sort((a,b)=>nodes.get(a).name.localeCompare(nodes.get(b).name,'pl')).forEach(seed=>{
+      if(visited.has(seed))return;
+      const stack=[seed],ids=[];visited.add(seed);
+      while(stack.length){
+        const id=stack.pop();ids.push(id);
+        [...(adj.get(id)||[])].sort((a,b)=>nodes.get(b).name.localeCompare(nodes.get(a).name,'pl')).forEach(next=>{
+          if(!visited.has(next)){visited.add(next);stack.push(next);}
+        });
+      }
+      const idSet=new Set(ids);
+      const compNodes=ids.map(id=>nodes.get(id)).sort((a,b)=>a.name.localeCompare(b.name,'pl'));
+      const compEdges=rel.filter(r=>idSet.has(String(cell(r,'From Character ID')||''))&&idSet.has(String(cell(r,'To Character ID')||'')));
+      components.push({nodes:compNodes,edges:compEdges,key:compNodes[0]?.name||''});
+    });
+    return components.sort((a,b)=>a.key.localeCompare(b.key,'pl'));
+  }
+  function relationIslandHtml_(component,index,bookId,portrait){
+    const nodes=component.nodes,rel=component.edges;
+    const cols=nodes.length<=2?nodes.length:nodes.length<=6?3:nodes.length<=10?4:5;
+    const rows=Math.max(1,Math.ceil(nodes.length/Math.max(1,cols)));
+    const width=Math.max(620,cols*205),height=Math.max(220,110+rows*155),marginX=105,marginY=75;
     const positions=new Map();
     for(let row=0;row<rows;row++){
-      const start=row*cols, rowNodes=nodes.slice(start,start+cols), count=rowNodes.length;
-      const span=width-(2*marginX), step=count<=1?0:span/(count-1);
+      const rowNodes=nodes.slice(row*cols,row*cols+cols),count=rowNodes.length;
+      const span=width-(2*marginX),step=count<=1?0:span/(count-1);
       rowNodes.forEach((node,col)=>{
         const x=count===1?width/2:marginX+(step*col);
         const y=rows===1?height/2:marginY+((height-(2*marginY))*row/(rows-1));
         positions.set(node.id,{x,y});
       });
     }
-    const edges=rel.map(r=>{
-      const from=String(cell(r,'From Character ID')||''), to=String(cell(r,'To Character ID')||'');
-      const p1=positions.get(from),p2=positions.get(to); if(!p1||!p2)return '';
-      const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2;
-      return `<g class="relation-constellation-edge" data-from="${esc(from)}" data-to="${esc(to)}"><line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"></line><text x="${mx}" y="${my-7}" text-anchor="middle">${esc(humanRelation(cell(r,'Relation')))}</text></g>`;
+    const edges=rel.map((r,edgeIndex)=>{
+      const from=String(cell(r,'From Character ID')||''),to=String(cell(r,'To Character ID')||'');
+      const fromName=String(cell(r,'From')||from),toName=String(cell(r,'To')||to);
+      const p1=positions.get(from),p2=positions.get(to);if(!p1||!p2)return '';
+      const mx=(p1.x+p2.x)/2,my=(p1.y+p2.y)/2,label=humanRelation(cell(r,'Relation'));
+      return `<g class="relation-constellation-edge" data-from="${esc(from)}" data-to="${esc(to)}" data-from-name="${esc(fromName)}" data-to-name="${esc(toName)}" data-label="${esc(label)}" data-edge-index="${edgeIndex}"><line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}"></line><text x="${mx}" y="${my-7}" text-anchor="middle">${esc(label)}</text></g>`;
     }).join('');
     const nodeHtml=nodes.map(node=>{
       const p=positions.get(node.id),left=(p.x/width*100).toFixed(2),top=(p.y/height*100).toFixed(2);
-      return `<button type="button" class="relation-constellation-node" data-character-id="${esc(node.id)}" style="left:${left}%;top:${top}%">${portrait(node.id,node.name)}<strong>${esc(node.name)}</strong></button>`;
+      return `<div class="relation-constellation-node" data-relation-focus="${esc(node.id)}" data-character-name="${esc(node.name)}" tabindex="0" role="button" aria-label="Pokaż relacje: ${esc(node.name)}" style="left:${left}%;top:${top}%">${portrait(node.id,node.name)}<strong>${esc(node.name)}</strong><button type="button" class="relation-node-dossier" data-character-id="${esc(node.id)}" title="Otwórz akta: ${esc(node.name)}" aria-label="Otwórz akta: ${esc(node.name)}">akta ↗</button></div>`;
     }).join('');
-    return `<div class="relation-constellation-scroll"><div class="relation-constellation" style="height:${height}px"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${edges}</svg><div class="relation-constellation-node-layer">${nodeHtml}</div></div></div><p class="relation-constellation-note">Układ jest alfabetyczny i służy wyłącznie pamięci oraz nawigacji. Pozycja, liczba linii i miejsce na tablicy nie oznaczają ważności, podejrzenia ani winy.</p>`;
+    const letter=String.fromCharCode(65+Math.min(index,25));
+    const alwaysVisible=nodes.length===2&&rel.length===1?' pair-island':'';
+    return `<section class="relation-island${alwaysVisible}" data-relation-island><div class="relation-island-head"><div><span>WYSPA ${letter}</span><strong>${nodes.length} ${nodes.length===1?'osoba':'osób'} · ${rel.length} ${rel.length===1?'relacja':'relacji'}</strong></div><small>podział wyłącznie według jawnych połączeń</small></div><div class="relation-constellation-scroll"><div class="relation-constellation" style="height:${height}px;min-width:${width}px"><svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" aria-hidden="true">${edges}</svg><div class="relation-constellation-node-layer">${nodeHtml}</div></div></div><div class="relation-focus-summary" aria-live="polite">Najedź lub kliknij postać, aby odsłonić tylko jej prawdziwe relacje.</div></section>`;
+  }
+  function relationConstellationHtml_(rel,bookId,portrait){
+    if(!rel.length)return '<div class="empty">Brak jawnych relacji.</div>';
+    const components=relationComponents_(rel);
+    return `<div class="relation-islands">${components.map((component,index)=>relationIslandHtml_(component,index,bookId,portrait)).join('')}</div><p class="relation-constellation-note">Wyspy rozdzielają osoby, między którymi nie ma żadnego jawnego łańcucha relacji. Linie są celowo ukryte w spoczynku: wybierz postać, aby zobaczyć wyłącznie jej bezpośrednie połączenia. Układ nie koduje ważności, podejrzenia ani winy.</p>`;
   }
   function wireRelationConstellation_(stage){
-    const graph=$('.relation-constellation',stage); if(!graph)return;
-    const nodes=$('.relation-constellation-node',graph),edges=$('.relation-constellation-edge',graph);
-    const clear=()=>{nodes.forEach(n=>n.classList.remove('dim','focus'));edges.forEach(e=>e.classList.remove('dim','active'));};
-    const focus=id=>{
-      const connected=new Set([id]);
-      edges.forEach(e=>{const a=e.dataset.from,b=e.dataset.to;if(a===id)connected.add(b);if(b===id)connected.add(a);});
-      nodes.forEach(n=>{const nid=n.dataset.characterId;n.classList.toggle('focus',nid===id);n.classList.toggle('dim',!connected.has(nid));});
-      edges.forEach(e=>{const active=e.dataset.from===id||e.dataset.to===id;e.classList.toggle('active',active);e.classList.toggle('dim',!active);});
-    };
-    nodes.forEach(n=>{
-      n.addEventListener('mouseenter',()=>focus(n.dataset.characterId));
-      n.addEventListener('mouseleave',clear);
-      n.addEventListener('focus',()=>focus(n.dataset.characterId));
-      n.addEventListener('blur',clear);
+    $$('.relation-island',stage).forEach(island=>{
+      const nodes=$$('.relation-constellation-node',island),edges=$$('.relation-constellation-edge',island),summary=$('.relation-focus-summary',island);
+      let lockedId='';
+      const clear=()=>{
+        nodes.forEach(n=>n.classList.remove('dim','focus','neighbor'));
+        edges.forEach(e=>e.classList.remove('dim','active'));
+        if(summary)summary.innerHTML='Najedź lub kliknij postać, aby odsłonić tylko jej prawdziwe relacje.';
+      };
+      const focus=id=>{
+        const connected=new Set([id]),incident=[];
+        edges.forEach(e=>{
+          const a=e.dataset.from,b=e.dataset.to,active=a===id||b===id;
+          if(active){connected.add(a);connected.add(b);incident.push(e);}
+          e.classList.toggle('active',active);e.classList.toggle('dim',!active);
+        });
+        nodes.forEach(n=>{
+          const nid=n.dataset.relationFocus;
+          n.classList.toggle('focus',nid===id);
+          n.classList.toggle('neighbor',nid!==id&&connected.has(nid));
+          n.classList.toggle('dim',!connected.has(nid));
+        });
+        if(summary){
+          const subject=nodes.find(n=>n.dataset.relationFocus===id)?.dataset.characterName||'Postać';
+          const lines=incident.map(e=>`<span><b>${esc(e.dataset.fromName)}</b> — ${esc(e.dataset.label)} — <b>${esc(e.dataset.toName)}</b></span>`).join('');
+          summary.innerHTML=`<strong>${esc(subject)}</strong><div>${lines||'<span>Brak bezpośrednich relacji.</span>'}</div>`;
+        }
+      };
+      nodes.forEach(n=>{
+        const id=n.dataset.relationFocus;
+        n.addEventListener('mouseenter',()=>{if(!lockedId)focus(id);});
+        n.addEventListener('mouseleave',()=>{if(!lockedId)clear();});
+        n.addEventListener('focus',()=>{if(!lockedId)focus(id);});
+        n.addEventListener('blur',()=>{if(!lockedId)setTimeout(()=>{if(!island.contains(document.activeElement))clear();},0);});
+        n.addEventListener('click',ev=>{
+          if(ev.target.closest('[data-character-id]'))return;
+          lockedId=lockedId===id?'':id;
+          if(lockedId)focus(lockedId);else clear();
+        });
+        n.addEventListener('keydown',ev=>{
+          if(ev.key==='Enter'||ev.key===' '){ev.preventDefault();lockedId=lockedId===id?'':id;if(lockedId)focus(lockedId);else clear();}
+          if(ev.key==='Escape'){lockedId='';clear();n.blur();}
+        });
+      });
+      clear();
     });
   }
   function renderCharacterCaseStage(stage,bookId,dossiers,cast){
@@ -646,7 +720,7 @@
     if(characterCaseTab==='relations'){
       const nodeCount=new Set(rel.flatMap(r=>[String(cell(r,'From Character ID')||''),String(cell(r,'To Character ID')||'')]).filter(Boolean)).size;
       const ledger=`<details class="relation-ledger"><summary>Rejestr krawędzi · ${rel.length}</summary><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a)}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b)}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div></details>`;
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ · CONSTELLATION</div><h3>${nodeCount} postaci · ${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div>${relationConstellationHtml_(rel,bookId,portrait)}${ledger}`;
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ · FOCUS CONSTELLATION</div><h3>${nodeCount} postaci · ${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div>${relationConstellationHtml_(rel,bookId,portrait)}${ledger}`;
     } else if(characterCaseTab==='collisions'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">NIE POMYL ICH</div><h3>${collisions.length} par do rozróżnienia</h3></div><span class="status-pill muted">POMOC PAMIĘCIOWA</span></div><div class="visual-collision-grid">${collisions.map(r=>`<article class="visual-collision-card"><div class="visual-pair"><button data-character-id="${esc(cell(r,'Character A ID'))}">${portrait(cell(r,'Character A ID'),cell(r,'Character A'))}<strong>${esc(cell(r,'Character A'))}</strong></button><span>≠</span><button data-character-id="${esc(cell(r,'Character B ID'))}">${portrait(cell(r,'Character B ID'),cell(r,'Character B'))}<strong>${esc(cell(r,'Character B'))}</strong></button></div><p>${esc(cell(r,'Safe Disambiguator'))}</p><small>ryzyko pomyłki ${esc(cell(r,'Score'))}/100</small></article>`).join('')||'<div class="empty">Brak par do rozróżnienia.</div>'}</div>`;
     } else if(characterCaseTab==='locations'){
