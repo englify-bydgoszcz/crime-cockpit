@@ -15,9 +15,9 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.0.1'",
-  "demo-data.js?v=7.0.1",
-  "app.js?v=7.0.1"
+  "const FRONTEND_VERSION = '7.0.2'",
+  "demo-data.js?v=7.0.2",
+  "app.js?v=7.0.2"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -30,6 +30,15 @@ if (!app.includes('const PORTRAIT_WEB_CACHE = {') || !app.includes("'CHR-0085':'
 }
 if (!app.includes("if (PORTRAIT_WEB_CACHE[id]) return PORTRAIT_WEB_CACHE[id];")) {
   throw new Error('Portrait resolver must prefer embedded web cache before Drive fallback.');
+}
+if (app.includes("this.remove();this.parentElement")) {
+  throw new Error('Regression: portrait onerror must not dereference parentElement after removing the image.');
+}
+if (!app.includes("const p=this.parentElement;if(p){p.classList.remove('has-image');p.innerHTML=")) {
+  throw new Error('Portrait fallback guard is missing.');
+}
+if (!app.includes("portrety live") || !app.includes("czeka na bezpieczny asset")) {
+  throw new Error('Case Pulse must distinguish live portrait assets from portrait-ready identities.');
 }
 if (app.includes("drive.google.com/uc?export=view")) {
   throw new Error('Legacy Drive uc portrait endpoint must not be used.');

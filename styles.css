@@ -216,3 +216,5 @@ footer{width:min(1500px,calc(100% - 48px));margin:0 auto;padding:20px 0 34px;bor
   .story-map-node{max-width:116px;padding:6px}.story-map-node small{display:none}
   .cockpit-time-node{min-width:58px}.cockpit-time-node small{display:none}
 }
+
+.cockpit-pulse-panel>p.cockpit-pulse-visual{margin-top:5px;color:rgba(214,179,106,.72);font-size:7px;letter-spacing:.035em}
