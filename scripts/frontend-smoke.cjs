@@ -15,9 +15,9 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '6.6.0'",
-  "demo-data.js?v=6.6.0",
-  "app.js?v=6.6.0"
+  "const FRONTEND_VERSION = '7.0.0-prototype'",
+  "demo-data.js?v=7.0.0-prototype",
+  "app.js?v=7.0.0-prototype"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -67,6 +67,18 @@ if (!app.includes('Nie rekonstruuję go po fakcie z późniejszej wiedzy.')) {
 }
 if (!app.includes('CASE PULSE') || !app.includes("rowsForBook('caseDelta'") || !css.includes('.case-pulse{')) {
   throw new Error('Case Pulse current-checkpoint delta surface is missing.');
+}
+if (!app.includes("characterCaseTab = 'cockpit'") || !index.includes('data-character-case-tab="cockpit"')) {
+  throw new Error('Case Cockpit must be the default current-book surface on the prototype branch.');
+}
+if (!app.includes('CASE COCKPIT · BIEŻĄCA SPRAWA') || !app.includes('data-case-go=') || !css.includes('.case-cockpit-grid{')) {
+  throw new Error('Case Cockpit composition or drill-down wiring is missing.');
+}
+if (!app.includes('story-space · bez fałszywej geolokalizacji') || !app.includes('Schemat pamięciowy, nie mapa odległości.') || !css.includes('.story-map-canvas{')) {
+  throw new Error('Story Map must remain explicitly schematic and non-geocoded.');
+}
+if (!app.includes('reader confusion memory') || !app.includes('Safe Disambiguator')) {
+  throw new Error('Reader Confusion Memory panel is missing from Case Cockpit.');
 }
 if (!app.includes('Tylko suche przyrosty bezpiecznych danych. Zero interpretacji fabuły.')) {
   throw new Error('Case Pulse spoiler-safe non-interpretation contract is missing.');
