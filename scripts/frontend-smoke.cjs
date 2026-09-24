@@ -15,9 +15,9 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.0.2'",
-  "demo-data.js?v=7.0.2",
-  "app.js?v=7.0.2"
+  "const FRONTEND_VERSION = '7.0.3'",
+  "demo-data.js?v=7.0.3",
+  "app.js?v=7.0.3"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -39,6 +39,12 @@ if (!app.includes("const p=this.parentElement;if(p){p.classList.remove('has-imag
 }
 if (!app.includes("portrety live") || !app.includes("czeka na bezpieczny asset")) {
   throw new Error('Case Pulse must distinguish live portrait assets from portrait-ready identities.');
+}
+if (!app.includes('data-cockpit-time-index=') || !app.includes("characterCaseTab='time';renderCharacters();")) {
+  throw new Error('Case Cockpit Time Machine nodes must deep-link to the selected immutable checkpoint.');
+}
+if (!app.includes("'par Nie pomyl','Collisions Δ'") || !app.includes("'teorie','Theory Δ'") || !app.includes("'portrait-ready','Portrait-ready Δ'") || !css.includes('.cockpit-delta-chips{')) {
+  throw new Error('Case Pulse must expose the full safe checkpoint delta, not only cast/relations/locations.');
 }
 if (app.includes("drive.google.com/uc?export=view")) {
   throw new Error('Legacy Drive uc portrait endpoint must not be used.');
