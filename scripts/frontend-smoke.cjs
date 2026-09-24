@@ -3,6 +3,7 @@ const fs=require('fs');
 const app=fs.readFileSync('app.js','utf8');
 const demo=fs.readFileSync('demo-data.js','utf8');
 const index=fs.readFileSync('index.html','utf8');
+const css=fs.readFileSync('styles.css','utf8');
 
 new Function(app);
 new Function(demo);
@@ -49,7 +50,6 @@ if (!app.includes("'par Nie pomyl','Collisions Δ'") || !app.includes("'teorie',
 if (app.includes("drive.google.com/uc?export=view")) {
   throw new Error('Legacy Drive uc portrait endpoint must not be used.');
 }
-const css=fs.readFileSync('styles.css','utf8');
 if (!css.includes('.case-portrait img{') || !css.includes('object-fit:contain') || !css.includes('object-position:center center')) {
   throw new Error('Portrait cards must use universal contain + centered framing.');
 }
