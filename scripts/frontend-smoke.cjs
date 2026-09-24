@@ -15,15 +15,21 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.0.0-prototype'",
-  "demo-data.js?v=7.0.0-prototype",
-  "app.js?v=7.0.0-prototype"
+  "const FRONTEND_VERSION = '7.0.1'",
+  "demo-data.js?v=7.0.1",
+  "app.js?v=7.0.1"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
 }
 if (!app.includes("https://drive.google.com/thumbnail?id=")) {
   throw new Error('Drive portrait resolver must use thumbnail endpoint.');
+}
+if (!app.includes('const PORTRAIT_WEB_CACHE = {') || !app.includes("'CHR-0085':'data:image/jpeg;base64,") || !app.includes("'CHR-0083':'data:image/jpeg;base64,")) {
+  throw new Error('Embedded portrait web cache is missing required known-good portraits.');
+}
+if (!app.includes("if (PORTRAIT_WEB_CACHE[id]) return PORTRAIT_WEB_CACHE[id];")) {
+  throw new Error('Portrait resolver must prefer embedded web cache before Drive fallback.');
 }
 if (app.includes("drive.google.com/uc?export=view")) {
   throw new Error('Legacy Drive uc portrait endpoint must not be used.');
