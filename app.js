@@ -7,7 +7,7 @@
   let revealObserver = null;
   let achievementStatusFilter = 'all';
   let achievementCategoryFilter = '';
-  let characterCaseTab = 'files';
+  let characterCaseTab = 'cockpit';
   let characterCaseBookId = '';
   let casePlaybackIndex = -1;
 
@@ -726,7 +726,131 @@
     const snaps=rowsForBook('checkpointSnapshots',bookId), deltas=rowsForBook('caseDelta',bookId), playback=rowsForBook('caseboardPlayback',bookId);
     const memory=rowsForBook('characterMemoryState',bookId), unlocks=rowsForBook('characterUnlocks',bookId), scene=rowsForBook('caseSceneState',bookId)[0]||null;
     const portrait=(id,name)=>{const url=portraitUrlFor(id,bookId);return url?portraitImgHtml_(url,name,characterInitials(name),true):`<div class="mini-face">${esc(characterInitials(name))}</div>`;};
-    if(characterCaseTab==='relations'){
+    if(characterCaseTab==='cockpit'){
+      const latestSnap=snaps[snaps.length-1]||{};
+      const latestDelta=deltas.find(r=>String(cell(r,'To Snapshot'))===String(cell(latestSnap,'Snapshot ID')))||deltas[deltas.length-1]||{};
+      const activePack=pack.filter(r=>String(cell(r,'Status')).toUpperCase()!=='RETIRED');
+      const focusIds=activePack.filter(r=>String(cell(r,'Item Type')).toUpperCase()==='CHARACTER').map(r=>String(cell(r,'Entity ID')||'')).filter(Boolean);
+      const uniqueFocus=[...new Set(focusIds)];
+      const fallbackIds=cast.map(r=>String(cell(r,'Character ID')||'')).filter(Boolean);
+      const selectedIds=[...uniqueFocus,...fallbackIds.filter(id=>!uniqueFocus.includes(id))].slice(0,6);
+      const focusCards=selectedIds.map(id=>{
+        const d=dossiers.find(r=>String(cell(r,'Character ID'))===id)||{};
+        const c=cast.find(r=>String(cell(r,'Character ID'))===id)||{};
+        const name=cell(d,'Character')||cell(c,'Display Name')||cell(characterRegistryById(id)||{},'Canonical Name')||id;
+        const role=humanRole(cell(d,'Role')||cell(c,'Book Role')||'POSTAĆ');
+        return `<button class="cockpit-character" data-character-id="${esc(id)}">${portrait(id,name)}<span><strong>${esc(name)}</strong><small>${esc(role)}</small></span></button>`;
+      }).join('');
+
+      const rankedCollisions=[...collisions].sort((a,b)=>{
+        const ar=/reader-observed|użytkownik jawnie/i.test(String(cell(a,'Notes')||cell(a,'Why Confusing')||''))?1:0;
+        const br=/reader-observed|użytkownik jawnie/i.test(String(cell(b,'Notes')||cell(b,'Why Confusing')||''))?1:0;
+        return br-ar+(numv(cell(b,'Score'))||0)-(numv(cell(a,'Score'))||0);
+      });
+      const collision=rankedCollisions[0]||null;
+      const confusion=collision?`<div class="cockpit-confusion-pair">
+        <button data-character-id="${esc(cell(collision,'Character A ID'))}">${portrait(cell(collision,'Character A ID'),cell(collision,'Character A'))}<strong>${esc(cell(collision,'Character A'))}</strong></button>
+        <span class="cockpit-not-equal">≠</span>
+        <button data-character-id="${esc(cell(collision,'Character B ID'))}">${portrait(cell(collision,'Character B ID'),cell(collision,'Character B'))}<strong>${esc(cell(collision,'Character B'))}</strong></button>
+        <p>${esc(cell(collision,'Safe Disambiguator'))}</p>
+      </div>`:`<div class="empty">Brak aktywnej pary do rozróżnienia.</div>`;
+
+      const priorityLocIds=activePack.filter(r=>String(cell(r,'Item Type')).toUpperCase()==='LOCATION').map(r=>String(cell(r,'Entity ID')||'')).filter(Boolean);
+      const orderedLocations=[
+        ...priorityLocIds.map(id=>locations.find(r=>String(cell(r,'Location ID'))===id)).filter(Boolean),
+        ...[...locations].sort((a,b)=>(numv(cell(b,'Mention Count'))||0)-(numv(cell(a,'Mention Count'))||0))
+      ].filter((r,i,a)=>a.findIndex(x=>String(cell(x,'Location ID'))===String(cell(r,'Location ID')))===i).slice(0,7);
+      const mapPos=[[16,24],[48,14],[76,27],[26,54],[57,48],[82,62],[43,76]];
+      const mapNodes=orderedLocations.map((r,i)=>{
+        const p=mapPos[i%mapPos.length];
+        return `<button class="story-map-node" style="left:${p[0]}%;top:${p[1]}%" data-case-go="locations" title="${esc(cell(r,'Who/what is this?')||'')}"><i></i><strong>${esc(cell(r,'Display Name'))}</strong><small>${esc(cell(r,'Location Role')||'miejsce')}</small></button>`;
+      }).join('');
+
+      const theories=activePack.filter(r=>['THEORY','SUSPICION'].includes(String(cell(r,'Item Type')).toUpperCase())).slice(0,4);
+      const theoryHtml=theories.map(r=>`<article class="cockpit-note"><span>${esc(cell(r,'Memory Cue')||'TWOJA TEORIA')}</span><strong>${esc(cell(r,'Label'))}</strong><p>${esc(cell(r,'Safe Fact'))}</p></article>`).join('')||'<div class="empty">Brak aktywnych teorii w pakiecie pamięci.</div>';
+
+      const frames=playback.filter(r=>String(cell(r,'Book ID'))===String(bookId));
+      const latestPage=Math.max(1,...frames.map(r=>parseInt(String(cell(r,'Progress')||'').match(/\d+/)?.[0]||'0',10)));
+      const timeline=frames.map((r,i)=>{
+        const page=parseInt(String(cell(r,'Progress')||'').match(/\d+/)?.[0]||'0',10);
+        const left=frames.length===1?50:Math.max(4,Math.min(96,page?4+(page/latestPage)*88:(i/(frames.length-1))*92+4));
+        const current=i===frames.length-1;
+        return `<button class="cockpit-time-node ${current?'current':''}" style="left:${left}%" data-case-go="time"><i></i><strong>${esc(cell(r,'Progress')||cell(r,'Frame ID'))}</strong><small>${current?'obecnie':esc(cell(r,'Snapshot ID')||'checkpoint')}</small></button>`;
+      }).join('');
+
+      const progress=cell(latestSnap,'Progress')||cell(scene,'Progress')||'—';
+      const castN=cell(latestSnap,'Safe Cast N')||cast.length;
+      const relN=cell(latestSnap,'Relations N')||rel.length;
+      const locN=cell(latestSnap,'Locations N')||locations.length;
+      const portraitN=cell(latestSnap,'Portrait-ready N')||'—';
+      const snapshotId=cell(latestSnap,'Snapshot ID')||'—';
+      const deltaId=cell(latestDelta,'Delta ID')||'—';
+      const deltaText=latestDelta?`+${esc(cell(latestDelta,'Cast Δ')||'0')} postaci · +${esc(cell(latestDelta,'Relations Δ')||'0')} relacji · +${esc(cell(latestDelta,'Locations Δ')||'0')} miejsc`:'brak poprzedniego checkpointu';
+      const sceneAid=scene?cell(scene,'Recommended Aid'):'TARGETED RECAP';
+      const reentryHeadline=scene?cell(scene,'Headline'):'Bieżący stan sprawy';
+      const reentryChars=scene?cell(scene,'Character Focus'):'—';
+
+      stage.innerHTML=`<div class="case-cockpit-shell">
+        <div class="case-cockpit-head">
+          <div>
+            <div class="section-kicker">CASE COCKPIT · BIEŻĄCA SPRAWA</div>
+            <h3>${esc(progress)} · jeden ekran, zero dopowiadania</h3>
+            <p>Warstwa orientacyjna składa wyłącznie dane bezpieczne dla bieżącej granicy wiedzy. Szczegóły zostają w istniejących aktach.</p>
+          </div>
+          <div class="cockpit-health"><span>●</span><div><strong>${esc(cell(latestSnap,'Health State')||'SAFE')}</strong><small>${esc(snapshotId)} · ${esc(deltaId)}</small></div></div>
+        </div>
+
+        <div class="case-cockpit-grid">
+          <section class="cockpit-panel cockpit-cast">
+            <div class="cockpit-panel-head"><div><span>GŁÓWNE POSTACIE</span><strong>${esc(castN)} w bezpiecznej kartotece</strong></div><button data-case-go="files">wszystkie akta →</button></div>
+            <div class="cockpit-character-strip">${focusCards||'<div class="empty">Brak postaci.</div>'}</div>
+          </section>
+
+          <section class="cockpit-panel cockpit-pulse-panel">
+            <div class="cockpit-panel-head"><div><span>CASE PULSE</span><strong>od poprzedniego checkpointu</strong></div></div>
+            <div class="cockpit-metric-grid">
+              <div><b>${esc(castN)}</b><span>postaci</span></div>
+              <div><b>${esc(relN)}</b><span>relacje</span></div>
+              <div><b>${esc(locN)}</b><span>miejsca</span></div>
+              <div><b>${esc(portraitN)}</b><span>portrait-ready</span></div>
+            </div>
+            <p>${deltaText}</p>
+          </section>
+
+          <section class="cockpit-panel cockpit-confusion">
+            <div class="cockpit-panel-head"><div><span>NIE POMYL</span><strong>reader confusion memory</strong></div><button data-case-go="collisions">wszystkie pary →</button></div>
+            ${confusion}
+          </section>
+
+          <section class="cockpit-panel cockpit-time-machine">
+            <div class="cockpit-panel-head"><div><span>TIME MACHINE</span><strong>co Cockpit wiedział wtedy?</strong></div><button data-case-go="time">pełne odtwarzanie →</button></div>
+            <div class="cockpit-time-axis"><div class="cockpit-time-line"></div>${timeline}</div>
+            <div class="cockpit-time-footer"><span>Snapshot: <b>${esc(snapshotId)}</b></span><span>Delta: <b>${esc(deltaId)}</b></span><span>${esc(deltaText)}</span></div>
+          </section>
+
+          <section class="cockpit-panel cockpit-story-map">
+            <div class="cockpit-panel-head"><div><span>MAPA SPRAWY</span><strong>story-space · bez fałszywej geolokalizacji</strong></div><button data-case-go="locations">lista miejsc →</button></div>
+            <div class="story-map-canvas">
+              <div class="story-map-ring r1"></div><div class="story-map-ring r2"></div><div class="story-map-cross x1"></div><div class="story-map-cross x2"></div>
+              ${mapNodes||'<div class="empty">Brak miejsc.</div>'}
+              <div class="story-map-legend">Schemat pamięciowy, nie mapa odległości.</div>
+            </div>
+          </section>
+
+          <section class="cockpit-panel cockpit-notebook">
+            <div class="cockpit-panel-head"><div><span>DETECTIVE NOTEBOOK</span><strong>Twoje teorie · system neutralny</strong></div><button data-case-go="suspicions">ściana podejrzeń →</button></div>
+            <div class="cockpit-note-list">${theoryHtml}</div>
+          </section>
+
+          <section class="cockpit-panel cockpit-reentry">
+            <div class="cockpit-panel-head"><div><span>RE-ENTRY PACK</span><strong>${esc(reentryHeadline)}</strong></div><button data-case-go="reentry">otwórz pakiet →</button></div>
+            <p class="cockpit-reentry-copy">${esc(reentryChars)}</p>
+            <div class="cockpit-reentry-aid"><span>Najlepsza pomoc teraz</span><strong>${esc(sceneAid||'—')}</strong></div>
+          </section>
+        </div>
+      </div>`;
+
+    } else if(characterCaseTab==='relations'){
       const nodeCount=new Set(rel.flatMap(r=>[String(cell(r,'From Character ID')||''),String(cell(r,'To Character ID')||'')]).filter(Boolean)).size;
       const ledger=`<details class="relation-ledger"><summary>Rejestr krawędzi · ${rel.length}</summary><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a)}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b)}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div></details>`;
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ · FOCUS CONSTELLATION</div><h3>${nodeCount} postaci · ${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div>${relationConstellationHtml_(rel,bookId,portrait)}${ledger}`;
@@ -760,7 +884,8 @@
       const rows=dossiers.length?dossiers:cast.map(r=>({'Book ID':cell(r,'Book ID'),'Character ID':cell(r,'Character ID'),'Character':cell(r,'Display Name'),'Role':cell(r,'Book Role'),'Safe Fact':cell(r,'Who is this?'),'Gate':cell(r,'Visibility Gate')}));
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">AKTA SPRAWY</div><h3>${rows.length} kart postaci</h3></div></div><div class="case-file-grid">${rows.map(r=>{const id=cell(r,'Character ID'), name=cell(r,'Character','Display Name'), mem=rowForCharacter('characterMemoryState',id,bookId)||{}, unlock=rowForCharacter('characterUnlocks',id,bookId)||{}, hasPortrait=!!portraitUrlFor(id,bookId);return `<button type="button" class="case-file-card" data-character-id="${esc(id)}">${characterPortrait(id,name,'card',bookId)}<div class="case-file-card-copy"><div class="case-card-top"><span>${esc(humanRole(cell(r,'Role')||'POSTAĆ'))}</span><em>${esc(cell(mem,'Memory State')||cell(r,'Recall Class')||'')}</em></div><h4>${esc(name)}</h4><p>${esc(cell(r,'Safe Fact')||'Bezpieczna kartoteka postaci.')}</p><div class="case-card-flags">${hasPortrait?'<span class="case-badge portrait">PORTRET</span>':''}<span class="case-badge neutral">${esc(cell(unlock,'Unlock Level')||'POZNANA')}</span></div><div class="progress-track"><i style="width:${clamp(cell(unlock,'Progress %')||17)}%"></i></div></div></button>`}).join('')||'<div class="empty">Brak akt.</div>'}</div>`;
     }
-    $$('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $('[data-case-go]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.caseGo||'cockpit';renderCharacters();}));
     wireRelationConstellation_(stage);
     $$('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
   }
