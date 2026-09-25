@@ -640,7 +640,7 @@
     let clue=String(entry&&entry.fact||humanRole(entry&&entry.role||'POSTAĆ')||'Bezpieczna karta postaci.').trim();
     const name=String(entry&&entry.name||'').trim();
     if(name){
-      const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\  function deltaSigned(v){ const n=Number(String(v??0).replace(',','.')); return Number.isFinite(n)?(n>0?'+'+n:String(n)):'0'; }');
+      const escaped=name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
       try{clue=clue.replace(new RegExp(escaped,'gi'),'Ta postać');}catch(_err){}
     }
     return clue||humanRole(entry&&entry.role||'POSTAĆ')||'Bezpieczna karta postaci.';
@@ -1042,8 +1042,8 @@
     }
     $$('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
     $$('[data-cockpit-time-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.cockpitTimeIndex);characterCaseTab='time';renderCharacters();}));
-    $('[data-case-go]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.caseGo||'cockpit';renderCharacters();}));
-    $('[data-lineup-answer]',stage).forEach(el=>el.addEventListener('click',()=>{
+    $$('[data-case-go]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.caseGo||'cockpit';renderCharacters();}));
+    $$('[data-lineup-answer]',stage).forEach(el=>el.addEventListener('click',()=>{
       if(witnessLineupState.answered)return;
       const prepared=ensureWitnessLineup_(bookId,dossiers,cast,collisions);
       const round=witnessLineupRound_(bookId,prepared.state,prepared.roster,collisions);
@@ -1055,9 +1055,9 @@
       else if(!witnessLineupState.misses.includes(round.target.id))witnessLineupState.misses.push(round.target.id);
       renderCharacterCaseStage(stage,bookId,dossiers,cast);
     }));
-    $('[data-lineup-next]',stage).forEach(el=>el.addEventListener('click',()=>{witnessLineupState.round+=1;witnessLineupState.answered=false;witnessLineupState.selectedId='';renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
-    $('[data-lineup-restart]',stage).forEach(el=>el.addEventListener('click',()=>{ensureWitnessLineup_(bookId,dossiers,cast,collisions,true);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
-    $('[data-lineup-exit]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab='cockpit';renderCharacters();}));
+    $$('[data-lineup-next]',stage).forEach(el=>el.addEventListener('click',()=>{witnessLineupState.round+=1;witnessLineupState.answered=false;witnessLineupState.selectedId='';renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $$('[data-lineup-restart]',stage).forEach(el=>el.addEventListener('click',()=>{ensureWitnessLineup_(bookId,dossiers,cast,collisions,true);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $$('[data-lineup-exit]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab='cockpit';renderCharacters();}));
     wireRelationConstellation_(stage);
     $$('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
   }
