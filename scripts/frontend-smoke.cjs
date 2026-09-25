@@ -16,9 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.0.3'",
-  "demo-data.js?v=7.0.3",
-  "app.js?v=7.0.3"
+  "const FRONTEND_VERSION = '7.1.0'",
+  "styles.css?v=7.1.0",
+  "demo-data.js?v=7.1.0",
+  "app.js?v=7.1.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -103,6 +104,21 @@ if (!app.includes('reader confusion memory') || !app.includes('Safe Disambiguato
 }
 if (!app.includes('Tylko suche przyrosty bezpiecznych danych. Zero interpretacji fabuły.')) {
   throw new Error('Case Pulse spoiler-safe non-interpretation contract is missing.');
+}
+if (!index.includes('data-character-case-tab="lineup"') || !app.includes("characterCaseTab==='lineup'") || !css.includes('.witness-options{')) {
+  throw new Error('Witness Line-Up surface is missing.');
+}
+if (!app.includes("const source=(cast&&cast.length)?cast:(dossiers||[]);") || !app.includes("rowsForBook('visualCollisionBoard',bookId)")) {
+  throw new Error('Witness Line-Up must build from the safe cast / safe collision surfaces only.');
+}
+if (!app.includes('zero wpływu na model gustu, podejrzenia i rekomendacje') || !app.includes('Nie trafia do Taste Fit, Suspect Wall, Character Memory ani Read Next Score.')) {
+  throw new Error('Witness Line-Up no-model-effect contract is missing.');
+}
+if (app.includes("storage.set('witnessLineup") || app.includes('storage.set("witnessLineup')) {
+  throw new Error('Witness Line-Up must remain ephemeral and must not persist session scores.');
+}
+if (!app.includes("if(!witnessLineupState.misses.includes(round.target.id))") || !app.includes('DO SZYBKIEGO PRZYPOMNIENIA')) {
+  throw new Error('Witness Line-Up review loop is missing.');
 }
 if (!app.includes("'physician of':'lekarz'") || !app.includes("'assistant to':'asystent'") || !app.includes("'prospective client of':'ma umówione spotkanie z'")) {
   throw new Error('New p54 relation labels are not localized.');
