@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.4'",
-  "styles.css?v=7.3.4",
-  "demo-data.js?v=7.3.4",
-  "app.js?v=7.3.4"
+  "const FRONTEND_VERSION = '7.3.5'",
+  "styles.css?v=7.3.5",
+  "demo-data.js?v=7.3.5",
+  "app.js?v=7.3.5"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -192,7 +192,7 @@ if (!app.includes("run('POSTACIE',renderCharacters)") || !app.includes("run('KOK
   throw new Error('Named renderer isolation coverage is incomplete.');
 }
 
-if (!app.includes("window.__crimeCockpitMapError") || !app.includes("Mapa interaktywna jest chwilowo niedostępna") || !app.includes("return {ok:false,reason:'MAP_ERROR',error}")) {
+if (!app.includes("window.__crimeCockpitMapError") || !app.includes("SCHEMATIC_RUNTIME_FALLBACK") || !app.includes("renderCaseSchematicMap_") || !app.includes("caseMapVisible_")) {
   throw new Error('Case map graceful-degradation guard is missing.');
 }
 if (!app.includes("POSTACIE / CASE COCKPIT") || !app.includes("let caseHubError=null") || !app.includes("tagged.cockpitSurface")) {
@@ -200,6 +200,19 @@ if (!app.includes("POSTACIE / CASE COCKPIT") || !app.includes("let caseHubError=
 }
 if (!app.includes("const surface=String(error?.cockpitSurface||label)")) {
   throw new Error('Nested renderer surface propagation is missing.');
+}
+
+if (!app.includes("DEFERRED_HIDDEN") || !app.includes("refreshCaseMapIfVisible_") || !app.includes("renderCaseSchematicMap_") || !app.includes("LIVE · MAPA UPROSZCZONA")) {
+  throw new Error('Visible-only map lifecycle and truthful fallback are missing.');
+}
+if (!app.includes("case-location-highlights") || !app.includes("locationHighlightHtml")) {
+  throw new Error('Location Intelligence must be visibly surfaced in the main Case Cockpit.');
+}
+if (!app.includes("#(?:kps_)?page_\\d+") || !app.includes("spoiler firewall aktywny")) {
+  throw new Error('Owner-facing checkpoint cleanup is incomplete.');
+}
+if (!css.includes(".case-schematic-map") || !css.includes(".case-location-highlights") || !css.includes(".case-map-approx-marker")) {
+  throw new Error('Location runtime CSS contract is incomplete.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');

@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.4';
+  const FRONTEND_VERSION = '7.3.5';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -513,7 +513,10 @@
     $$('.view').forEach(v=>v.classList.toggle('active',v.id===id));
     $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===id));
     if(scroll) window.scrollTo({top:0,behavior:'smooth'});
-    requestAnimationFrame(observeReveals);
+    requestAnimationFrame(()=>{
+      observeReveals();
+      if(id==='characters') setTimeout(refreshCaseMapIfVisible_,0);
+    });
   }
 
   function renderOverview(){
@@ -680,8 +683,9 @@
   function humanCheckpoint_(value=''){
     let s=String(value||'').trim();
     if(!s)return '—';
-    s=s.replace(/\s*[·|]\s*(?:Text\/)?[^·|\s]*\.xhtml\b/gi,'');
-    s=s.replace(/\b(?:Text\/)?[^\s·|]*\.xhtml\b/gi,'');
+    s=s.replace(/\s*[·|]\s*(?:Text\/)?[^·|\s]*\.xhtml(?:#[^\s·|]+)?/gi,'');
+    s=s.replace(/\b(?:Text\/)?[^\s·|]*\.xhtml(?:#[^\s·|]+)?/gi,'');
+    s=s.replace(/\s*#(?:kps_)?page_\d+\b/gi,'');
     s=s.replace(/\s{2,}/g,' ').replace(/\s*[·|]\s*$/,'').trim();
     return s||'—';
   }
@@ -978,19 +982,65 @@
   function caseGeoRows_(bookId,locations){
     return (locations||[]).map(r=>({row:r,geo:locationGeo_(bookId,cell(r,'Location ID'))}));
   }
+  function caseMapVisible_(el){
+    if(!el||!el.isConnected)return false;
+    const rect=el.getBoundingClientRect?.();
+    return !!(el.getClientRects?.().length && rect && rect.width>40 && rect.height>40);
+  }
+  function renderCaseSchematicMap_(el,mappable,reason=''){
+    if(!el)return;
+    const rows=(mappable||[]).filter(x=>Number.isFinite(x.geo?.lat)&&Number.isFinite(x.geo?.lng));
+    if(!rows.length){
+      el.innerHTML='<div class="case-map-fallback"><strong>Brak punktów do pokazania.</strong><br><span>Miejsca regionalne i fabularne pozostają dostępne na liście.</span></div>';
+      return;
+    }
+    const lats=rows.map(x=>x.geo.lat),lngs=rows.map(x=>x.geo.lng);
+    let minLat=Math.min(...lats),maxLat=Math.max(...lats),minLng=Math.min(...lngs),maxLng=Math.max(...lngs);
+    const latSpan=Math.max(.12,maxLat-minLat),lngSpan=Math.max(.12,maxLng-minLng);
+    minLat-=latSpan*.08;maxLat+=latSpan*.08;minLng-=lngSpan*.08;maxLng+=lngSpan*.08;
+    const nodeHtml=rows.map(({row,geo})=>{
+      const x=8+84*((geo.lng-minLng)/(maxLng-minLng||1));
+      const y=8+84*(1-((geo.lat-minLat)/(maxLat-minLat||1)));
+      const approx=String(geo.status)==='STORY-INFERRED APPROX';
+      const name=cell(row,'Display Name')||geo.label||'Miejsce';
+      const detail=approx?`Przybliżony obszar · ok. ${geo.radiusKm||0.25} km`:'Zweryfikowane miejsce';
+      return `<button type="button" class="case-schematic-point ${approx?'approx':'verified'}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%" title="${esc(name)} · ${esc(detail)}"><i></i><span>${esc(name)}</span></button>`;
+    }).join('');
+    el.innerHTML=`<div class="case-schematic-map"><div class="case-schematic-grid"></div>${nodeHtml}<div class="case-schematic-caption"><strong>Mapa uproszczona</strong><span>${esc(reason||'Podkład interaktywny jest niedostępny.')} Pozycje wynikają wyłącznie z bezpiecznych współrzędnych; brakujące miejsca nie są sztucznie przypinane.</span></div></div>`;
+  }
   function initCaseGeoMap_(stage,bookId,locations){
     const el=$('[data-case-real-map]',stage); if(!el)return {ok:true,reason:'NO_SLOT'};
-    if(stage._caseLeafletMap){try{stage._caseLeafletMap.remove();}catch(_err){} stage._caseLeafletMap=null;}
     const mappable=caseGeoRows_(bookId,locations).filter(x=>['REAL VERIFIED','STORY-INFERRED APPROX'].includes(String(x.geo?.status||''))&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lng));
     if(!mappable.length){el.innerHTML='<div class="case-map-fallback">Na tym etapie nie ma miejsc, które można uczciwie osadzić na mapie.</div>';return {ok:true,reason:'NO_MAPPABLE'};}
+    if(!caseMapVisible_(el)){
+      el.dataset.mapPending='1';
+      el.innerHTML='<div class="case-map-fallback pending"><span>Mapa załaduje się po otwarciu widoku.</span></div>';
+      return {ok:true,reason:'DEFERRED_HIDDEN'};
+    }
+    delete el.dataset.mapPending;
+    if(stage._caseLeafletMap){try{stage._caseLeafletMap.remove();}catch(_err){} stage._caseLeafletMap=null;}
     if(!window.L){
-      el.innerHTML='<div class="case-map-fallback">Mapa bazowa nie załadowała się. Statusy lokalizacji i ich poziom pewności pozostają dostępne na liście poniżej.</div>';
-      return {ok:true,reason:'LEAFLET_UNAVAILABLE'};
+      window.__crimeCockpitMapError='LEAFLET_UNAVAILABLE';
+      renderCaseSchematicMap_(el,mappable,'Biblioteka mapowa nie została załadowana.');
+      return {ok:false,reason:'SCHEMATIC_NO_LEAFLET',degraded:true};
     }
     try{
       const map=window.L.map(el,{zoomControl:true,scrollWheelZoom:false});
       stage._caseLeafletMap=map;
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+      let tileErrors=0,degraded=false;
+      const tiles=window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'});
+      tiles.on('tileerror',()=>{
+        tileErrors+=1;
+        if(tileErrors===4 && !degraded && el.isConnected){
+          degraded=true;
+          window.__crimeCockpitMapError='OSM_TILE_LOAD_ERROR';
+          try{map.remove();}catch(_err){}
+          stage._caseLeafletMap=null;
+          renderCaseSchematicMap_(el,mappable,'Podkład OpenStreetMap nie odpowiedział.');
+          if(activeView==='characters')setSourceBadge('LIVE · MAPA UPROSZCZONA','warning','Podkład OpenStreetMap nie odpowiedział; używam schematu współrzędnych.');
+        }
+      });
+      tiles.addTo(map);
       const bounds=[];
       mappable.forEach(({row,geo})=>{
         const ll=[geo.lat,geo.lng];
@@ -1002,23 +1052,45 @@
           const icon=window.L.divIcon({className:'case-map-marker',html:'<span></span>',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-9]});
           window.L.marker(ll,{icon}).addTo(map).bindPopup(`<strong>${esc(name)}</strong><br><span>Zweryfikowane miejsce</span><br><small>${esc(safeFact)}</small>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
         } else {
+          bounds.push(ll);
           const radiusM=Math.max(100,Number(geo.radiusKm||0.25)*1000);
-          const circle=window.L.circle(ll,{radius:radiusM,weight:1.5,dashArray:'7 6',fillOpacity:.08,opacity:.75,className:'case-map-approx-area'}).addTo(map);
-          bounds.push(circle.getBounds().getSouthWest(),circle.getBounds().getNorthEast());
-          window.L.circleMarker(ll,{radius:5,weight:1.5,fillOpacity:.22,className:'case-map-approx-anchor'}).addTo(map)
-            .bindPopup(`<strong>${esc(name)}</strong><br><span>Przybliżona lokalizacja · promień ok. ${esc(geo.radiusKm||0.25)} km</span><br><small>${esc(geo.basis||safeFact)}</small>`);
+          try{
+            const circle=window.L.circle(ll,{radius:radiusM,weight:1.5,dashArray:'7 6',fillOpacity:.08,opacity:.75,className:'case-map-approx-area'}).addTo(map);
+            bounds.push(circle.getBounds().getSouthWest(),circle.getBounds().getNorthEast());
+            window.L.circleMarker(ll,{radius:5,weight:1.5,fillOpacity:.22,className:'case-map-approx-anchor'}).addTo(map)
+              .bindPopup(`<strong>${esc(name)}</strong><br><span>Przybliżona lokalizacja · promień ok. ${esc(geo.radiusKm||0.25)} km</span><br><small>${esc(geo.basis||safeFact)}</small>`);
+          }catch(approxError){
+            console.warn('Crime Cockpit approximate halo fallback',{name,approxError});
+            const icon=window.L.divIcon({className:'case-map-approx-marker',html:'<span><i></i></span>',iconSize:[42,42],iconAnchor:[21,21],popupAnchor:[0,-20]});
+            window.L.marker(ll,{icon}).addTo(map)
+              .bindPopup(`<strong>${esc(name)}</strong><br><span>Przybliżona lokalizacja · ok. ${esc(geo.radiusKm||0.25)} km</span><br><small>${esc(geo.basis||safeFact)}</small>`);
+          }
         }
       });
       if(bounds.length===1)map.setView(bounds[0],12); else if(bounds.length)map.fitBounds(bounds,{padding:[28,28],maxZoom:11});
-      setTimeout(()=>{try{map.invalidateSize();}catch(_err){}},40);
+      setTimeout(()=>{try{if(!degraded)map.invalidateSize();}catch(_err){}},80);
+      window.__crimeCockpitMapError='';
       return {ok:true,reason:'MAP_READY'};
     }catch(error){
       try{stage._caseLeafletMap?.remove();}catch(_err){}
       stage._caseLeafletMap=null;
-      el.innerHTML='<div class="case-map-fallback"><strong>Mapa interaktywna jest chwilowo niedostępna.</strong><br><span>Lista miejsc i poziomy pewności pozostają kompletne poniżej.</span></div>';
-      console.warn('Crime Cockpit map degraded gracefully',{bookId,error});
       window.__crimeCockpitMapError=String(error?.message||error||'MAP_ERROR');
-      return {ok:false,reason:'MAP_ERROR',error};
+      renderCaseSchematicMap_(el,mappable,'Mapa interaktywna nie mogła wystartować.');
+      console.warn('Crime Cockpit map switched to schematic fallback',{bookId,error});
+      return {ok:false,reason:'SCHEMATIC_RUNTIME_FALLBACK',degraded:true,error};
+    }
+  }
+  function refreshCaseMapIfVisible_(){
+    if(activeView!=='characters'||!['cockpit','locations'].includes(characterCaseTab))return;
+    const stage=$('#characterCaseStage'); if(!stage)return;
+    const bookId=String(characterCaseBookId||data.current.id||'');
+    const locations=rowsForBook('bookLocations',bookId).filter(r=>boolv(cell(r,'Safe Now?')));
+    const result=initCaseGeoMap_(stage,bookId,locations);
+    if(result?.reason==='MAP_READY'){
+      const badge=$('#sourceBadge');
+      if(badge&&/^LIVE · MAPA/.test(badge.textContent||''))setSourceBadge('LIVE','good');
+    }else if(result?.degraded){
+      setSourceBadge('LIVE · MAPA UPROSZCZONA','warning',window.__crimeCockpitMapError||result.reason||'MAP_FALLBACK');
     }
   }
 
@@ -1264,6 +1336,12 @@
       const storyOnly=geoRows.filter(x=>String(x.geo?.status)==='STORY SPACE');
       const storyOnlyHtml=storyOnly.map(x=>`<span>${esc(cell(x.row,'Display Name'))}</span>`).join('');
       const regionHtml=regionGeo.map(x=>`<span><b>${esc(cell(x.row,'Display Name'))}</b> · ${esc(x.geo.region||'szerszy obszar')}</span>`).join('');
+      const locationHighlights=[...approxGeo,...regionGeo].slice(0,3);
+      const locationHighlightHtml=locationHighlights.map(({row,geo})=>{
+        const cls=geoStatusClass_(geo.status);
+        const detail=geo.region||geo.basis||cell(row,'Who/what is this?')||'';
+        return `<button type="button" class="case-location-highlight ${cls}" data-case-go="locations"><span>${esc(humanGeoStatus_(geo.status))}</span><strong>${esc(cell(row,'Display Name')||geo.label||'Miejsce')}</strong><small>${esc(detail)}</small></button>`;
+      }).join('');
 
       const latestPage=Math.max(1,...frames.map(r=>parseInt(String(cell(r,'Progress')||'').match(/\d+/)?.[0]||'0',10)));
       const timeline=frames.map((r,i)=>{
@@ -1282,6 +1360,7 @@
       const portraitPendingN=Math.max(0,(numv(portraitReadyN)||0)-displayPortraitN);
       const snapshotId=cell(latestSnap,'Snapshot ID')||'—';
       const deltaId=cell(latestDelta,'Delta ID')||'—';
+      const healthDetail=state.mode==='expert'?`${snapshotId} · ${deltaId}`:`checkpoint ${humanCheckpoint_(progress)} · spoiler firewall aktywny`;
       const deltaParts=latestDelta?[
         ['postaci','Cast Δ'],
         ['relacji','Relations Δ'],
@@ -1292,6 +1371,9 @@
       ].map(([label,key])=>({label,value:numv(cell(latestDelta,key))||0})).filter(x=>x.value!==0):[];
       const deltaText=deltaParts.length?deltaParts.map(x=>`${deltaSigned(x.value)} ${x.label}`).join(' · '):'brak nowych bezpiecznych przyrostów';
       const deltaChips=deltaParts.map(x=>`<span><b>${esc(deltaSigned(x.value))}</b> ${esc(x.label)}</span>`).join('');
+      const timeSourceHtml=state.mode==='expert'
+        ? `<span>Snapshot: <b>${esc(snapshotId)}</b></span><span>Delta: <b>${esc(deltaId)}</b></span><span>${esc(deltaText)}</span>`
+        : `<span>Checkpoint: <b>${esc(humanCheckpoint_(progress))}</b></span><span>${esc(deltaText)}</span>`;
       const sceneAid=scene?cell(scene,'Recommended Aid'):'TARGETED RECAP';
       const reentryHeadline=scene?cell(scene,'Headline'):'Bieżący stan sprawy';
       const reentryChars=scene?cell(scene,'Character Focus'):'—';
@@ -1303,7 +1385,7 @@
             <h3>${esc(progress)} · jeden ekran, zero dopowiadania</h3>
             <p>Warstwa orientacyjna składa wyłącznie dane bezpieczne dla bieżącej granicy wiedzy. Szczegóły zostają w istniejących aktach.</p>
           </div>
-          <div class="cockpit-health"><span>●</span><div><strong>${esc(cell(latestSnap,'Health State')||'SAFE')}</strong><small>${esc(snapshotId)} · ${esc(deltaId)}</small></div></div>
+          <div class="cockpit-health"><span>●</span><div><strong>${esc(cell(latestSnap,'Health State')||'SAFE')}</strong><small>${esc(healthDetail)}</small></div></div>
         </div>
 
         <div class="case-cockpit-overview-grid">
@@ -1363,13 +1445,14 @@
           <section class="cockpit-panel cockpit-time-machine">
             <div class="cockpit-panel-head"><div><span>TIME MACHINE</span><strong>co Cockpit wiedział wtedy?</strong></div><button data-case-go="time">pełne odtwarzanie →</button></div>
             <div class="cockpit-time-axis"><div class="cockpit-time-line"></div>${timeline}</div>
-            <div class="cockpit-time-footer"><span>Snapshot: <b>${esc(snapshotId)}</b></span><span>Delta: <b>${esc(deltaId)}</b></span><span>${esc(deltaText)}</span></div>
+            <div class="cockpit-time-footer">${timeSourceHtml}</div>
           </section>
 
           <section class="cockpit-panel cockpit-story-map">
             <div class="cockpit-panel-head"><div><span>MAPA SPRAWY</span><strong>${esc(verifiedGeo.length)} zweryfikowanych · ${esc(approxGeo.length)} przybliżonych · ${esc(regionGeo.length)} regionalnych · ${esc(storyOnly.length)} fabularnych</strong></div><button data-case-go="locations">lista miejsc →</button></div>
             <div class="case-real-map" data-case-real-map aria-label="Mapa miejsc sprawy z jawnym poziomem pewności lokalizacji"></div>
             <div class="case-map-legend-v2" aria-label="Legenda mapy"><span class="verified"><i></i>Zweryfikowane miejsce</span><span class="approx"><i></i>Przybliżona lokalizacja</span><span class="region"><i></i>Znamy tylko region</span><span class="story"><i></i>Przestrzeń fabularna</span></div>
+            ${locationHighlightHtml?`<div class="case-location-highlights">${locationHighlightHtml}</div>`:''}
             <div class="case-map-contract"><span>Mapa pokazuje pewność, nie udaje precyzji</span><small>Klasyczna pinezka oznacza wyłącznie miejsce zweryfikowane. Halo = przybliżenie; region i przestrzeń fabularna pozostają bez dokładnej pinezki.</small></div>
             ${regionGeo.length?`<details class="case-story-space region-only"><summary>Znamy tylko region · ${esc(regionGeo.length)}</summary><div>${regionHtml}</div></details>`:''}
             ${storyOnly.length?`<details class="case-story-space"><summary>Przestrzeń fabularna · ${esc(storyOnly.length)} bez dokładnej lokalizacji</summary><div>${storyOnlyHtml}</div></details>`:''}
