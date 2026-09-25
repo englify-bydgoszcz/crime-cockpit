@@ -849,7 +849,8 @@
     verified.forEach(({row,geo})=>{
       const ll=[geo.lat,geo.lng];bounds.push(ll);
       const mentions=cell(row,'Mention Count');
-      L.marker(ll).addTo(map).bindPopup(`<strong>${esc(cell(row,'Display Name'))}</strong><br><span>${esc(cell(row,'Who/what is this?')||'')}</span>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
+      const icon=L.divIcon({className:'case-map-marker',html:'<span></span>',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-9]});
+      L.marker(ll,{icon}).addTo(map).bindPopup(`<strong>${esc(cell(row,'Display Name'))}</strong><br><span>${esc(cell(row,'Who/what is this?')||'')}</span>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
     });
     if(bounds.length===1)map.setView(bounds[0],12); else map.fitBounds(bounds,{padding:[28,28],maxZoom:10});
     setTimeout(()=>map.invalidateSize(),40);
