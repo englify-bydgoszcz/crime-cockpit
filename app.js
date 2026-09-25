@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.2';
+  const FRONTEND_VERSION = '7.3.3';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -326,15 +326,15 @@
 
     successfulPayloads.forEach(payload=>mergeLivePatch(payload));
     data=normalizeData(data);
-    try{
-      renderAll();
-    }catch(err){
-      console.error('Crime Cockpit deferred render failed',{failures,error:err});
-      setSourceBadge('LIVE · CORE · BŁĄD UI','warning',String(err?.message||err||'FRONTEND_RENDER_ERROR'));
-      if(showToast)toast('Rdzeń LIVE działa, ale moduły dodatkowe mają błąd renderowania');
+    const renderErrors=renderAll();
+
+    if(renderErrors.length){
+      const labels=[...new Set(renderErrors.map(x=>x.label))];
+      const detail=renderErrors.map(x=>`${x.label}: ${String(x.error?.message||x.error||'UNKNOWN')}`).join('\n');
+      setSourceBadge(`LIVE · UI: ${labels.slice(0,2).join(' + ')}${labels.length>2?' +…':''}`,'warning',detail);
+      if(showToast)toast(`Dane LIVE są gotowe; błąd renderera: ${labels.join(', ')}`);
       return;
     }
-
     if(failures.length){
       const detail=failures.map(x=>`${x.job.label}: ${String(x.error?.message||x.error||'UNKNOWN')}`).join('\n');
       setSourceBadge(`LIVE · BRAK ${failures.length} MODUŁÓW`,'warning',detail);
@@ -354,7 +354,8 @@
         phase='live-render';
         data = normalizeData(payload);
         setSourceBadge('LIVE · CORE','good');
-        renderAll();
+        const coreRenderErrors=renderAll();
+        if(coreRenderErrors.length) throw new Error('CORE_RENDER: '+coreRenderErrors.map(x=>x.label+': '+String(x.error?.message||x.error||'UNKNOWN')).join(' | '));
         if(showToast) toast('Rdzeń LIVE gotowy · doczytuję moduły');
         phase='deferred-load';
         loadDeferredLiveData(false).catch(err=>{
@@ -438,30 +439,42 @@
   }
 
   function renderAll() {
-    applyMode();
-    buildNav();
-    renderOverview();
-    renderQueue();
-    renderDirector();
-    renderLibrary();
-    renderCharacters();
-    renderAchievements();
-    renderCoverage();
-    renderHealth();
-    renderReadingRoom();
-    renderSimulator();
-    renderMissions();
-    renderModel();
-    renderFrontier();
-    renderEnrichmentEngine();
-    renderArena();
-    renderLab();
-    hydrateCovers();
-    observeReveals();
-    const when = data.generatedAt ? new Date(data.generatedAt) : null;
-    $('#lastUpdated').textContent = when && !Number.isNaN(when.getTime()) ? `Dane: ${when.toLocaleString('pl-PL')}` : 'Dane: —';
-    const versionEl=$('#frontendVersion'); if(versionEl) versionEl.textContent=`Crime Cockpit · local frontend v${FRONTEND_VERSION}`;
-    checkSchemaCompatibility();
+    const errors=[];
+    const run=(label,fn)=>{
+      try{ fn(); }
+      catch(error){
+        errors.push({label,error});
+        console.error('Crime Cockpit renderer failed',{label,error});
+      }
+    };
+    run('TRYB',applyMode);
+    run('NAWIGACJA',buildNav);
+    run('KOKPIT',renderOverview);
+    run('KOLEJKA',renderQueue);
+    run('REŻYSER',renderDirector);
+    run('BIBLIOTEKA',renderLibrary);
+    run('POSTACIE',renderCharacters);
+    run('TROFEA',renderAchievements);
+    run('MAPA WIEDZY',renderCoverage);
+    run('STAN SYSTEMU',renderHealth);
+    run('KLUB LEKTUROWY',renderReadingRoom);
+    run('SYMULATOR',renderSimulator);
+    run('MISJE',renderMissions);
+    run('MODEL',renderModel);
+    run('GRANICE WIEDZY',renderFrontier);
+    run('ROI RESEARCHU',renderEnrichmentEngine);
+    run('ARENA MODELI',renderArena);
+    run('LABORATORIUM',renderLab);
+    run('OKŁADKI',hydrateCovers);
+    run('ANIMACJE',observeReveals);
+    run('META',()=>{
+      const when = data.generatedAt ? new Date(data.generatedAt) : null;
+      $('#lastUpdated').textContent = when && !Number.isNaN(when.getTime()) ? `Dane: ${when.toLocaleString('pl-PL')}` : 'Dane: —';
+      const versionEl=$('#frontendVersion'); if(versionEl) versionEl.textContent=`Crime Cockpit · local frontend v${FRONTEND_VERSION}`;
+      checkSchemaCompatibility();
+    });
+    window.__crimeCockpitRenderErrors=errors.map(x=>({label:x.label,message:String(x.error?.message||x.error||'UNKNOWN')}));
+    return errors;
   }
 
   function applyMode(){
