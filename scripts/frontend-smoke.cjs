@@ -192,7 +192,7 @@ if (!app.includes("run('POSTACIE',renderCharacters)") || !app.includes("run('KOK
   throw new Error('Named renderer isolation coverage is incomplete.');
 }
 
-if (!app.includes("window.__crimeCockpitMapError") || !app.includes("Mapa interaktywna jest chwilowo niedostępna") || !app.includes("return {ok:false,reason:'MAP_ERROR',error}")) {
+if (!app.includes("window.__crimeCockpitMapError") || !app.includes("SCHEMATIC_RUNTIME_FALLBACK") || !app.includes("renderCaseSchematicMap_") || !app.includes("caseMapVisible_")) {
   throw new Error('Case map graceful-degradation guard is missing.');
 }
 if (!app.includes("POSTACIE / CASE COCKPIT") || !app.includes("let caseHubError=null") || !app.includes("tagged.cockpitSurface")) {
