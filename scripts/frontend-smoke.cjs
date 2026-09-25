@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.2'",
-  "styles.css?v=7.3.2",
-  "demo-data.js?v=7.3.2",
-  "app.js?v=7.3.2"
+  "const FRONTEND_VERSION = '7.3.3'",
+  "styles.css?v=7.3.3",
+  "demo-data.js?v=7.3.3",
+  "app.js?v=7.3.3"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -183,6 +183,13 @@ if (app.includes("for (const keys of groups)") || app.includes("['characterEncou
 }
 if (!app.includes("LIVE · CORE · BŁĄD UI") || !app.includes("LIVE · CORE · HYDRATION ERROR") || !app.includes("LIVE · BRAK")) {
   throw new Error('Deferred hydration failure must expose an explicit owner-facing state.');
+}
+
+if (!app.includes("window.__crimeCockpitRenderErrors") || !app.includes("LIVE · UI:") || !app.includes("const renderErrors=renderAll()")) {
+  throw new Error('Renderer isolation diagnostics are missing.');
+}
+if (!app.includes("run('POSTACIE',renderCharacters)") || !app.includes("run('KOKPIT',renderOverview)") || !app.includes("run('LABORATORIUM',renderLab)")) {
+  throw new Error('Named renderer isolation coverage is incomplete.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
