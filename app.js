@@ -661,7 +661,7 @@
     }
     return clue||humanRole(entry&&entry.role||'POSTAĆ')||'Bezpieczna karta postaci.';
   }
-  function ensureWitnessLineup_(bookId,dossiers,cast,collisions,reset=false){
+  function ensureWitnessLineup_(bookId,dossiers,cast,smartCollisions,reset=false){
     const roster=witnessLineupRoster_(dossiers,cast);
     const previous=witnessLineupState||{};
     if(reset||previous.bookId!==bookId||!Array.isArray(previous.order)||!previous.order.length){
@@ -1219,9 +1219,16 @@
       const ledger=`<details class="relation-ledger"><summary>Rejestr krawędzi · ${rel.length}</summary><div class="relation-board">${rel.map(r=>{const a=cell(r,'From'),b=cell(r,'To'),aid=cell(r,'From Character ID'),bid=cell(r,'To Character ID');return `<div class="relation-board-edge"><button data-character-id="${esc(aid)}">${portrait(aid,a)}<strong>${esc(a)}</strong></button><div class="relation-thread"><span>${esc(humanRelation(cell(r,'Relation')))}</span></div><button data-character-id="${esc(bid)}">${portrait(bid,b)}<strong>${esc(b)}</strong></button></div>`}).join('')||'<div class="empty">Brak jawnych relacji.</div>'}</div></details>`;
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ · FOCUS CONSTELLATION</div><h3>${nodeCount} postaci · ${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div>${relationConstellationHtml_(rel,bookId,portrait)}${ledger}`;
     } else if(characterCaseTab==='collisions'){
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">NIE POMYL ICH</div><h3>${collisions.length} par do rozróżnienia</h3></div><span class="status-pill muted">POMOC PAMIĘCIOWA</span></div><div class="visual-collision-grid">${collisions.map(r=>`<article class="visual-collision-card"><div class="visual-pair"><button data-character-id="${esc(cell(r,'Character A ID'))}">${portrait(cell(r,'Character A ID'),cell(r,'Character A'))}<strong>${esc(cell(r,'Character A'))}</strong></button><span>≠</span><button data-character-id="${esc(cell(r,'Character B ID'))}">${portrait(cell(r,'Character B ID'),cell(r,'Character B'))}<strong>${esc(cell(r,'Character B'))}</strong></button></div><p>${esc(cell(r,'Safe Disambiguator'))}</p><small>ryzyko pomyłki ${esc(cell(r,'Score'))}/100</small></article>`).join('')||'<div class="empty">Brak par do rozróżnienia.</div>'}</div>`;
+      const trMap=traceMap_(bookId);
+      const cards=smartCollisions.map(r=>{
+        const aid=String(cell(r,'Character A ID')||''),bid=String(cell(r,'Character B ID')||'');
+        const at=trMap.get(aid)||{},bt=trMap.get(bid)||{};
+        const kind=collisionKind_(r,cast,dossiers);
+        return `<article class="visual-collision-card smart"><div class="collision-kind">${esc(kind)}</div><div class="visual-pair"><button data-character-id="${esc(aid)}">${portrait(aid,cell(r,'Character A'))}<strong>${esc(cell(r,'Character A'))}</strong><small>${esc(cell(at,'Mention Count')||'—')} wzm. · p${esc(cell(at,'Last Page')||'—')}</small></button><span>≠</span><button data-character-id="${esc(bid)}">${portrait(bid,cell(r,'Character B'))}<strong>${esc(cell(r,'Character B'))}</strong><small>${esc(cell(bt,'Mention Count')||'—')} wzm. · p${esc(cell(bt,'Last Page')||'—')}</small></button></div><div class="collision-explain"><span>Dlaczego można pomylić</span><p>${esc(cell(r,'Why Confusing')||'—')}</p><span>Najkrótsze rozróżnienie</span><strong>${esc(cell(r,'Safe Disambiguator')||'—')}</strong></div></article>`;
+      }).join('');
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">NIE POMYL ICH · SMART FILTER</div><h3>${smartCollisions.length} sensownych par z ${collisions.length} surowych kandydatów</h3></div><span class="status-pill muted">RELACJA ≠ POMYŁKA</span></div><p class="case-stage-note">Samo pokrewieństwo lub małżeństwo nie wystarcza. Pary różnej płci są domyślnie odrzucane, chyba że mamy rzeczywisty sygnał pomyłki czytelnika. Liczba wzmianek służy wyłącznie orientacji pamięciowej.</p><div class="visual-collision-grid">${cards||'<div class="empty">Na tym etapie brak par, które naprawdę warto ćwiczyć.</div>'}</div>`;
     } else if(characterCaseTab==='lineup'){
-      const prepared=ensureWitnessLineup_(bookId,dossiers,cast,collisions);
+      const prepared=ensureWitnessLineup_(bookId,dossiers,cast,smartCollisions);
       const lineupState=prepared.state, roster=prepared.roster;
       if(roster.length<2){
         stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">WITNESS LINE-UP</div><h3>Za mało bezpiecznych postaci do rundy</h3></div><span class="status-pill muted">SAFE ONLY</span></div><div class="empty">Line-Up uruchomi się automatycznie, gdy bezpieczna kartoteka będzie miała co najmniej dwie postacie.</div>`;
@@ -1232,7 +1239,7 @@
         const verdict=lineupState.hits===total?'Kartoteka siedzi w głowie.':lineupState.hits>=Math.ceil(total*.6)?'Całkiem dobrze — kilka akt warto jeszcze przewertować.':'Idealny moment na szybkie przypomnienie akt.';
         stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">WITNESS LINE-UP · KONIEC SESJI</div><h3>${esc(lineupState.hits)}/${esc(total)} rozpoznanych</h3></div><span class="status-pill good">EPHEMERAL</span></div><section class="witness-lineup-finish"><div class="witness-lineup-seal"><span>RECALL DRILL</span><strong>${esc(lineupState.hits)}/${esc(total)}</strong><small>${esc(verdict)}</small></div>${review?`<div class="witness-review"><div class="section-kicker">DO SZYBKIEGO PRZYPOMNIENIA</div><div class="witness-review-grid">${review}</div></div>`:'<p class="witness-perfect">Zero pudła. Możesz wracać do sprawy. 😎</p>'}<div class="witness-actions"><button type="button" class="button primary" data-lineup-restart>Jeszcze raz</button><button type="button" class="button" data-lineup-exit>Kokpit sprawy</button></div><p class="small-note">Wynik istnieje tylko w tej sesji interfejsu. Nie trafia do Taste Fit, Suspect Wall, Character Memory ani Read Next Score.</p></section>`;
       } else {
-        const round=witnessLineupRound_(bookId,lineupState,roster,collisions);
+        const round=smartWitnessRound_(bookId,lineupState,roster,smartCollisions);
         if(!round){
           stage.innerHTML='<div class="empty">Nie udało się zbudować bezpiecznej rundy.</div>';
         } else {
@@ -1282,8 +1289,8 @@
     if(characterCaseTab==='cockpit')initCaseGeoMap_(stage,bookId,locations);
     $$('[data-lineup-answer]',stage).forEach(el=>el.addEventListener('click',()=>{
       if(witnessLineupState.answered)return;
-      const prepared=ensureWitnessLineup_(bookId,dossiers,cast,collisions);
-      const round=witnessLineupRound_(bookId,prepared.state,prepared.roster,collisions);
+      const prepared=ensureWitnessLineup_(bookId,dossiers,cast,smartCollisions);
+      const round=smartWitnessRound_(bookId,prepared.state,prepared.roster,smartCollisions);
       if(!round)return;
       const selected=String(el.dataset.lineupAnswer||'');
       witnessLineupState.selectedId=selected;
@@ -1293,7 +1300,7 @@
       renderCharacterCaseStage(stage,bookId,dossiers,cast);
     }));
     $$('[data-lineup-next]',stage).forEach(el=>el.addEventListener('click',()=>{witnessLineupState.round+=1;witnessLineupState.answered=false;witnessLineupState.selectedId='';renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
-    $$('[data-lineup-restart]',stage).forEach(el=>el.addEventListener('click',()=>{ensureWitnessLineup_(bookId,dossiers,cast,collisions,true);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $$('[data-lineup-restart]',stage).forEach(el=>el.addEventListener('click',()=>{ensureWitnessLineup_(bookId,dossiers,cast,smartCollisions,true);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
     $$('[data-lineup-exit]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab='cockpit';renderCharacters();}));
     wireRelationConstellation_(stage);
     $$('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
