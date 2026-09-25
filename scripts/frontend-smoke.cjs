@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.5.1'",
-  "styles.css?v=7.5.1",
-  "demo-data.js?v=7.5.1",
-  "app.js?v=7.5.1"
+  "const FRONTEND_VERSION = '7.5.2'",
+  "styles.css?v=7.5.2",
+  "demo-data.js?v=7.5.2",
+  "app.js?v=7.5.2"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -273,6 +273,16 @@ if (!app.includes('window.sessionStorage.setItem(CORE_SESSION_CACHE_KEY') || app
 }
 if (!app.includes('backgroundCoreRetryCount>=3')) {
   throw new Error('Background core retry must be bounded.');
+}
+
+if (app.includes("if(coreRenderErrors.length) throw new Error('CORE_RENDER:")) {
+  throw new Error('A single renderer failure must never demote healthy LIVE core to DEMO.');
+}
+if (!app.includes("LIVE · PROBLEM:") || !app.includes("renderAll already isolates each surface")) {
+  throw new Error('Live renderer containment contract is missing.');
+}
+if (!app.includes("readingArcadeBadges") || app.includes("passport.insertAdjacentHTML('afterend'")) {
+  throw new Error('Reading Arcade badges must re-render idempotently.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
