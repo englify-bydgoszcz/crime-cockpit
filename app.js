@@ -1134,9 +1134,33 @@
           <div class="cockpit-health"><span>●</span><div><strong>${esc(cell(latestSnap,'Health State')||'SAFE')}</strong><small>${esc(snapshotId)} · ${esc(deltaId)}</small></div></div>
         </div>
 
+        <div class="case-cockpit-overview-grid">
+          <section class="cockpit-panel cockpit-reading-progress">
+            <div class="section-kicker">POSTĘP LEKTURY</div>
+            <div class="reading-progress-number"><strong>${esc(currentPage||'—')} <span>/ ${esc(totalPages||'—')}</span></strong><em>${esc(progressPct)}%</em></div>
+            <div class="reading-progress-track"><i style="width:${esc(progressPct)}%"></i></div>
+            <div class="reading-progress-meta"><span>Ostatnia strona: <b>${esc(currentPage||'—')}</b></span><span>Kolejny checkpoint: <b>${nextGoal?'p'+esc(nextGoal):'—'}</b></span></div>
+            <div class="reading-progress-footer"><span>▣ Rozpoczęto: <b>${esc(startDate)}</b></span><span>Cel: <b>${nextGoal?'p'+esc(nextGoal)+' · +'+esc(Math.max(0,nextGoal-currentPage))+' stron':'—'}</b><small>miękki cel, nie obowiązek</small></span></div>
+          </section>
+
+          <section class="cockpit-panel cockpit-recent-updates">
+            <div class="cockpit-panel-head"><div><span>OSTATNIE AKTUALIZACJE</span><strong>${previousPage?'p'+esc(previousPage)+' → ':''}p${esc(currentPage||'—')}</strong></div><button data-case-go="files">zobacz akta →</button></div>
+            <div class="case-update-strip">${recentUpdatesHtml}</div>
+          </section>
+        </div>
+
+        <section class="cockpit-panel cockpit-reading-timeline">
+          <div class="cockpit-panel-head"><div><span>TIMELINE LEKTURY</span><strong>${esc(currentPage||'—')} / ${esc(totalPages||'—')} stron</strong></div><div class="reading-timeline-legend"><span><i class="read"></i>Przeczytane</span><span><i class="checkpoint"></i>Checkpoint</span><span><i class="future"></i>Nadchodzący</span></div></div>
+          <div class="reading-timeline-shell">
+            <div class="reading-dot-line">${readingDots}</div>
+            <div class="reading-checkpoints">${checkpointMarkers}${nextGoal>currentPage?`<span class="reading-goal" style="left:${goalLeft}%"><i></i><strong>p${esc(nextGoal)}</strong><small>Cel</small></span>`:''}</div>
+            <div class="reading-milestones">${milestoneLabels}</div>
+          </div>
+        </section>
+
         <div class="case-cockpit-grid">
           <section class="cockpit-panel cockpit-cast">
-            <div class="cockpit-panel-head"><div><span>GŁÓWNE POSTACIE</span><strong>${esc(castN)} w bezpiecznej kartotece</strong></div><button data-case-go="files">wszystkie akta →</button></div>
+            <div class="cockpit-panel-head"><div><span>GŁÓWNE POSTACIE</span><strong>${esc(castN)} w bezpiecznej kartotece</strong></div><div class="cockpit-panel-actions">${characterSortSelect_()}<button data-case-go="files">wszystkie akta →</button></div></div>
             <div class="cockpit-character-strip">${focusCards||'<div class="empty">Brak postaci.</div>'}</div>
           </section>
 
@@ -1171,12 +1195,10 @@
           </section>
 
           <section class="cockpit-panel cockpit-story-map">
-            <div class="cockpit-panel-head"><div><span>MAPA SPRAWY</span><strong>story-space · bez fałszywej geolokalizacji</strong></div><button data-case-go="locations">lista miejsc →</button></div>
-            <div class="story-map-canvas">
-              <div class="story-map-ring r1"></div><div class="story-map-ring r2"></div><div class="story-map-cross x1"></div><div class="story-map-cross x2"></div>
-              ${mapNodes||'<div class="empty">Brak miejsc.</div>'}
-              <div class="story-map-legend">Schemat pamięciowy, nie mapa odległości.</div>
-            </div>
+            <div class="cockpit-panel-head"><div><span>MAPA SPRAWY</span><strong>hybrydowa geografia · ${esc(verifiedGeo.length)} real / ${esc(storyOnly.length)} story-space</strong></div><button data-case-go="locations">lista miejsc →</button></div>
+            <div class="case-real-map" data-case-real-map aria-label="Zweryfikowana mapa rzeczywistych miejsc sprawy"></div>
+            <div class="case-map-contract"><span>REAL MAP · tylko niezależnie zweryfikowane współrzędne</span><small>OpenStreetMap · fikcyjne i niejednoznaczne miejsca nie dostają zmyślonych pinezek.</small></div>
+            ${storyOnly.length?`<details class="case-story-space"><summary>Story Space · ${esc(storyOnly.length)} miejsc bez geokodowania</summary><div>${storyOnlyHtml}</div></details>`:''}
           </section>
 
           <section class="cockpit-panel cockpit-notebook">
@@ -1256,6 +1278,8 @@
     $$('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
     $$('[data-cockpit-time-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.cockpitTimeIndex);characterCaseTab='time';renderCharacters();}));
     $$('[data-case-go]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.caseGo||'cockpit';renderCharacters();}));
+    $$('[data-character-sort]',stage).forEach(el=>el.addEventListener('change',()=>{characterSortMode=el.value||'mentions';renderCharacters();}));
+    if(characterCaseTab==='cockpit')initCaseGeoMap_(stage,bookId,locations);
     $$('[data-lineup-answer]',stage).forEach(el=>el.addEventListener('click',()=>{
       if(witnessLineupState.answered)return;
       const prepared=ensureWitnessLineup_(bookId,dossiers,cast,collisions);
