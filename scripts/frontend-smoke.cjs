@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.9'",
-  "styles.css?v=7.3.9",
-  "demo-data.js?v=7.3.9",
-  "app.js?v=7.3.9"
+  "const FRONTEND_VERSION = '7.4.0'",
+  "styles.css?v=7.4.0",
+  "demo-data.js?v=7.4.0",
+  "app.js?v=7.4.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -235,5 +235,18 @@ if (!app.includes("status:'REAL VISUAL'") || !app.includes("status:'CONCEPT VISU
 
 if (app.includes("Generated checkpoint-safe stylized place visual") || app.includes("Stylizowana wizualizacja miejsca")) throw new Error('Legacy stylized place-visual art direction leaked into owner UI.');
 if (!app.includes("Generated checkpoint-safe photoreal place visual") || !app.includes("Fotorealistyczna wizualizacja miejsca") || !app.includes("?v=2")) throw new Error('Photoreal place-visual cache-bust/art-direction contract missing.');
+
+if (!app.includes("const PERF_STORAGE_KEY = 'crimeCockpitPerfV1'") || !app.includes("PERF_MAX_SAMPLES = 30") || !app.includes("recordPerf_('core'") || !app.includes("recordPerf_('deferred:total'")) {
+  throw new Error('Client Performance Ring Buffer contract is missing.');
+}
+if (app.includes("PERF_STORAGE_KEY = 'crimeCockpitApiUrl'") || app.includes("PERF_STORAGE_KEY = 'crimeCockpitToken'")) {
+  throw new Error('Performance telemetry must never reuse sensitive configuration storage.');
+}
+if (!app.includes('data-temptation-shield="active"') || !app.includes('PREVIEW ONLY') || !app.includes('przed CASE CLOSED i debriefem')) {
+  throw new Error('Current-case Temptation Shield is missing.');
+}
+if (!css.includes('.queue-shield{')) {
+  throw new Error('Temptation Shield styling is missing.');
+}
 
 console.log('Crime Cockpit frontend smoke: PASS');
