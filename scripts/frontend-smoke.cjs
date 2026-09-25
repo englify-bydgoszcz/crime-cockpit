@@ -165,7 +165,7 @@ if (!app.includes("'physician of':'lekarz'") || !app.includes("'assistant to':'a
   throw new Error('New p54 relation labels are not localized.');
 }
 
-if (!app.includes('humanCheckpoint_') || !app.includes('NO GEOCODING — INSUFFICIENT SAFE PRECISION')) {
+if (!app.includes('humanCheckpoint_') || !app.includes('geoStatusClass_') || !app.includes("status:'STORY SPACE'")) {
   throw new Error('Owner-tech cleanup or geo safety vocabulary is missing.');
 }
 if (!app.includes('locationVisualHtml_') || !css.includes('.case-location-visual{') || !app.includes("status:'PLACEHOLDER'")) {
