@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.0';
+  const FRONTEND_VERSION = '7.3.1';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -259,16 +259,7 @@
 
   async function loadDeferredLiveData(showToast=true) {
     let partial=false;
-    try {
-      const extras=requireOk(await jsonp(state.apiUrl,state.token,{scope:'extras'},22000));
-      mergeLivePatch(extras);
-      data=normalizeData(data);
-      renderAll();
-    } catch (err) {
-      partial=true;
-      console.warn('Crime Cockpit extras load failed',err);
-    }
-
+    const failures=[];
     const groups=[
       ['undercoverGems','paretoShelf','seriesMap','memoryHalfLife','criticCrowdMe'],
       ['explanationDiff','predictionMarket','uncertaintyBudget','semanticQuarantine','sourceCalibration'],
@@ -280,19 +271,46 @@
       ['characterRegistry','bookCast','characterRelations','characterEvidence','characterCoverage','castLoad','characterRecallEngine','identityCollisionLab','recurringCharacterRadar','characterProgressSync'],
       ['characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura']
     ];
-    for (const keys of groups) {
-      try {
-        const payload=requireOk(await jsonp(state.apiUrl,state.token,{scope:'modules',keys:keys.join(',')},22000));
-        mergeLivePatch(payload);
-      } catch (err) {
-        partial=true;
-        console.warn('Crime Cockpit module group load failed',keys,err);
+    const jobs=[
+      {label:'extras',run:()=>jsonp(state.apiUrl,state.token,{scope:'extras'},12000)},
+      ...groups.map((keys,index)=>({label:`modules-${index+1}`,keys,run:()=>jsonp(state.apiUrl,state.token,{scope:'modules',keys:keys.join(',')},12000)}))
+    ];
+    const results=new Array(jobs.length);
+    let cursor=0,done=0;
+    setSourceBadge('LIVE · DOCZYTUJĘ 0/'+jobs.length,'good');
+
+    async function worker_(){
+      while(true){
+        const index=cursor++;
+        if(index>=jobs.length)return;
+        const job=jobs[index];
+        try{
+          results[index]={ok:true,payload:requireOk(await job.run()),job};
+        }catch(err){
+          partial=true;
+          failures.push({label:job.label,error:String(err?.message||err||'UNKNOWN')});
+          results[index]={ok:false,error:err,job};
+          console.warn('Crime Cockpit deferred load failed',job.label,job.keys||'',err);
+        }finally{
+          done+=1;
+          setSourceBadge(`LIVE · DOCZYTUJĘ ${done}/${jobs.length}`,partial?'warning':'good');
+        }
       }
     }
+    await Promise.all(Array.from({length:Math.min(4,jobs.length)},()=>worker_()));
+
+    results.filter(x=>x?.ok).forEach(x=>mergeLivePatch(x.payload));
     data=normalizeData(data);
-    renderAll();
+    try{
+      renderAll();
+    }catch(err){
+      console.error('Crime Cockpit deferred render failed',{failures,error:err});
+      setSourceBadge('LIVE · CORE · BŁĄD UI','warning');
+      if(showToast)toast('Rdzeń LIVE działa, ale moduły dodatkowe mają błąd renderowania');
+      return;
+    }
     setSourceBadge(partial?'LIVE · CZĘŚĆ MODUŁÓW':'LIVE',partial?'warning':'good');
-    if(showToast) toast(partial?'Rdzeń LIVE działa; część modułów eksperckich nie została doczytana':'Dane LIVE i moduły gotowe');
+    if(showToast) toast(partial?'Rdzeń LIVE działa; część modułów nie została doczytana':'Dane LIVE i moduły gotowe');
   }
 
   async function loadData(showToast=true) {
@@ -308,7 +326,10 @@
         renderAll();
         if(showToast) toast('Rdzeń LIVE gotowy · doczytuję moduły');
         phase='deferred-load';
-        loadDeferredLiveData(false);
+        loadDeferredLiveData(false).catch(err=>{
+          console.error('Crime Cockpit deferred hydration crashed',err);
+          setSourceBadge('LIVE · CORE · HYDRATION ERROR','warning');
+        });
       } else {
         phase='demo-render';
         data = normalizeData(window.CRIME_COCKPIT_DEMO || {});
