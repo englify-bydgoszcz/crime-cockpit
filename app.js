@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.9';
+  const FRONTEND_VERSION = '7.4.0';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -113,6 +113,34 @@
     token: storage.get('crimeCockpitToken',''),
     mode: storage.get('crimeCockpitViewMode','owner')
   };
+
+  // Local-only client performance ring buffer. Never stores API URL, token,
+  // book/user data or response payloads — only coarse timing + status metadata.
+  const PERF_STORAGE_KEY = 'crimeCockpitPerfV1';
+  const PERF_MAX_SAMPLES = 30;
+  function perfSamples_(){
+    try {
+      const parsed=JSON.parse(storage.get(PERF_STORAGE_KEY,'[]'));
+      return Array.isArray(parsed)?parsed.filter(x=>x&&typeof x.kind==='string'&&Number.isFinite(Number(x.ms))).slice(-PERF_MAX_SAMPLES):[];
+    } catch(err) {
+      console.warn('Crime Cockpit performance history unreadable',err);
+      return [];
+    }
+  }
+  function recordPerf_(kind,startedAt,status='OK'){
+    if(!Number.isFinite(Number(startedAt))) return;
+    const sample={
+      at:new Date().toISOString(),
+      kind:String(kind||'unknown').slice(0,80),
+      ms:Math.max(0,Math.round(performance.now()-Number(startedAt))),
+      status:String(status||'OK').slice(0,24)
+    };
+    const next=[...perfSamples_(),sample].slice(-PERF_MAX_SAMPLES);
+    storage.set(PERF_STORAGE_KEY,JSON.stringify(next));
+  }
+  function latestPerf_(kind){
+    return [...perfSamples_()].reverse().find(x=>x.kind===kind)||null;
+  }
 
   const fallbackModules = [
     {id:'overview',label:'Kokpit',enabled:true,owner:true,expert:true,order:10,icon:'◉'},
@@ -278,6 +306,7 @@
   }
 
   async function loadDeferredLiveData(showToast=true) {
+    const deferredStarted=performance.now();
     const semanticGroups=[
       ['undercoverGems','paretoShelf','seriesMap','memoryHalfLife','criticCrowdMe'],
       ['explanationDiff','predictionMarket','uncertaintyBudget','semanticQuarantine','sourceCalibration'],
@@ -308,12 +337,16 @@
           const index=cursor++;
           if(index>=jobs.length)return;
           const job=jobs[index];
+          const jobStarted=performance.now();
+          let jobStatus='OK';
           try{
             results[index]={ok:true,payload:requireOk(await job.run()),job};
           }catch(err){
+            jobStatus='ERROR';
             results[index]={ok:false,error:err,job};
             console.warn('Crime Cockpit deferred load failed',job.label,job.keys||'',err);
           }finally{
+            recordPerf_('deferred:'+job.label,jobStarted,jobStatus);
             done+=1;
             const failedSoFar=results.filter(x=>x&&x.ok===false).length;
             setSourceBadge(`LIVE · ${progressLabel} ${done}/${jobs.length}`,failedSoFar?'warning':'good');
@@ -346,6 +379,7 @@
     successfulPayloads.forEach(payload=>mergeLivePatch(payload));
     data=normalizeData(data);
     const renderErrors=renderAll();
+    recordPerf_('deferred:total',deferredStarted,renderErrors.length?'UI_ERROR':failures.length?'PARTIAL':'OK');
 
     if(renderErrors.length){
       const labels=[...new Set(renderErrors.map(x=>x.label))];
@@ -366,10 +400,13 @@
   async function loadData(showToast=true) {
     $('#refreshBtn').textContent = '…';
     let phase='bootstrap';
+    let coreStarted=null;
     try {
       if (state.apiUrl && state.token) {
         phase='core-request';
+        coreStarted=performance.now();
         const payload=requireOk(await jsonp(state.apiUrl,state.token,{scope:'core'},22000));
+        recordPerf_('core',coreStarted,'OK');
         phase='live-render';
         data = normalizeData(payload);
         setSourceBadge('LIVE · CORE','good');
@@ -389,6 +426,7 @@
         if(showToast) toast('Snapshot demonstracyjny gotowy');
       }
     } catch (err) {
+      if(coreStarted!=null&&phase==='core-request') recordPerf_('core',coreStarted,'ERROR');
       console.error('Crime Cockpit load failed', {phase, error:err});
       const liveRenderError = phase==='live-render';
       const diagnosis = liveRenderError
@@ -598,7 +636,11 @@
   }
 
   function renderQueue(){
-    $('#queueCards').innerHTML=data.candidates.map((b,i)=>`<article class="queue-card" data-book-id="${esc(b.id||'')}">${coverHtml(b,'small')}<div class="queue-main"><div class="queue-title"><h3>${esc(b.title)}${vaultSignalHtml(b)}</h3>${statusBadge(b.lifecycle)}</div><p>${esc(b.author)} · ${esc(b.country||'')}${languageShort(b)?` · ${esc(languageShort(b))}`:''}</p><p class="queue-reason">${esc(queueNarrative(b))}</p></div><div class="queue-score"><span>${esc(term('Decision Score','Czy warto teraz'))}</span><strong>${n(b.decision)}</strong></div></article>`).join('')||`<div class="empty">Brak kandydatów.</div>`;
+    const currentOpen=Boolean(data.current?.id);
+    const temptationShield=currentOpen
+      ? `<article class="queue-shield" data-temptation-shield="active"><div><span class="section-kicker">BIEŻĄCA SPRAWA TRWA</span><strong>${esc(data.current.title||'Bieżąca lektura')} pozostaje aktywna</strong><p>Kolejka jest tylko podglądem przyszłych możliwości. Żaden kandydat nie zastępuje bieżącej książki przed CASE CLOSED i debriefem.</p></div><span class="status-pill good">PREVIEW ONLY</span></article>`
+      : '';
+    $('#queueCards').innerHTML=temptationShield+(data.candidates.map((b,i)=>`<article class="queue-card" data-book-id="${esc(b.id||'')}">${coverHtml(b,'small')}<div class="queue-main"><div class="queue-title"><h3>${esc(b.title)}${vaultSignalHtml(b)}</h3>${statusBadge(b.lifecycle)}</div><p>${esc(b.author)} · ${esc(b.country||'')}${languageShort(b)?` · ${esc(languageShort(b))}`:''}</p><p class="queue-reason">${esc(queueNarrative(b))}</p></div><div class="queue-score"><span>${esc(term('Decision Score','Czy warto teraz'))}</span><strong>${n(b.decision)}</strong></div></article>`).join('')||`<div class="empty">Brak kandydatów.</div>`);
     $('#queueCards').querySelectorAll('.queue-card').forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.bookId))));
     $('#queueBody').innerHTML=data.candidates.map((b,i)=>`<tr><td>${b.decisionRank||i+1}</td><td><strong>${esc(b.title)}</strong></td><td>${esc(b.author)}</td><td>${n(b.decision)}</td><td>${n(b.bookFit)}</td><td>${n(b.readNext)}</td><td>${n(b.discoverySignal)}</td><td>${n(b.infoGain)}</td><td>${n(b.sessionBoost)}</td><td>${statusBadge(b.lifecycle)}</td><td>${esc(languageUi(b))}</td><td>${esc(b.risk||'')}</td></tr>`).join('');
     renderUndercoverGems();
@@ -1815,10 +1857,23 @@
 
   function renderLab(){
     const extras=safeArray(data.schema.extraFields); const feats=data.ui.features||{};
-    const items=[['Frontend',FRONTEND_VERSION],['Schema API',data.schemaVersion||'—'],['Pola biblioteki',safeArray(data.schema.libraryFields).length],['Nowe / nieznane pola',extras.length]];
+    const perf=perfSamples_();
+    const core=latestPerf_('core');
+    const hydration=latestPerf_('deferred:total');
+    const items=[
+      ['Frontend',FRONTEND_VERSION],
+      ['Schema API',data.schemaVersion||'—'],
+      ['Pola biblioteki',safeArray(data.schema.libraryFields).length],
+      ['Nowe / nieznane pola',extras.length],
+      ['Core request',core?`${core.ms} ms`:'—'],
+      ['Hydration',hydration?`${hydration.ms} ms`:'—'],
+      ['Perf samples',perf.length]
+    ];
     $('#labMetrics').innerHTML=items.map(([label,value])=>`<div class="metric-card"><strong>${esc(value)}</strong><span>${esc(label)}</span></div>`).join('');
     $('#extraFieldsList').innerHTML=extras.length?extras.map(x=>`<span class="token">${esc(x)}</span>`).join(''):`<span class="token">Brak nieznanych pól — schema zsynchronizowana</span>`;
-    $('#featureList').innerHTML=Object.entries(feats).map(([k,v])=>`<div class="feature-item"><span>${esc(k)}</span><span>${esc(String(v))}</span></div>`).join('')||`<div class="empty">Brak flag.</div>`;
+    const featureRows=Object.entries(feats).map(([k,v])=>`<div class="feature-item"><span>${esc(k)}</span><span>${esc(String(v))}</span></div>`).join('');
+    const perfRows=perf.slice(-5).reverse().map(x=>`<div class="feature-item"><span>CLIENT PERF · ${esc(x.kind)}</span><span>${esc(x.status)} · ${n(x.ms,0)} ms</span></div>`).join('');
+    $('#featureList').innerHTML=featureRows+perfRows||`<div class="empty">Brak flag i lokalnych pomiarów.</div>`;
     renderSemanticQuarantine();
     renderSourceCalibration();
     renderReviewIntelligence();
