@@ -858,6 +858,12 @@
         <button data-character-id="${esc(cell(collision,'Character B ID'))}">${portrait(cell(collision,'Character B ID'),cell(collision,'Character B'))}<strong>${esc(cell(collision,'Character B'))}</strong></button>
         <p>${esc(cell(collision,'Safe Disambiguator'))}</p>
       </div>`:`<div class="empty">Brak aktywnej pary do rozróżnienia.</div>`;
+      const lineupPreview=selectedIds.slice(0,3).map(id=>{
+        const d=dossiers.find(r=>String(cell(r,'Character ID'))===id)||{};
+        const cr=cast.find(r=>String(cell(r,'Character ID'))===id)||{};
+        const name=cell(d,'Character')||cell(cr,'Display Name')||cell(characterRegistryById(id)||{},'Canonical Name')||id;
+        return '<span title="'+esc(name)+'">'+portrait(id,name)+'</span>';
+      }).join('');
 
       const priorityLocIds=activePack.filter(r=>String(cell(r,'Item Type')).toUpperCase()==='LOCATION').map(r=>String(cell(r,'Entity ID')||'')).filter(Boolean);
       const orderedLocations=[
@@ -938,6 +944,13 @@
             ${confusion}
           </section>
 
+          <section class="cockpit-panel cockpit-lineup">
+            <div class="cockpit-panel-head"><div><span>WITNESS LINE-UP</span><strong>60 sekund pamięci</strong></div><button data-case-go="lineup">uruchom →</button></div>
+            <div class="cockpit-lineup-preview">${lineupPreview}</div>
+            <p>Pięć spoiler-safe kart „kto to?” z bieżącej bezpiecznej kartoteki. Pary z „Nie pomyl” dostają pierwszeństwo.</p>
+            <small>Sesja jest ulotna · zero wpływu na model gustu, podejrzenia i rekomendacje.</small>
+          </section>
+
           <section class="cockpit-panel cockpit-time-machine">
             <div class="cockpit-panel-head"><div><span>TIME MACHINE</span><strong>co Cockpit wiedział wtedy?</strong></div><button data-case-go="time">pełne odtwarzanie →</button></div>
             <div class="cockpit-time-axis"><div class="cockpit-time-line"></div>${timeline}</div>
@@ -972,6 +985,33 @@
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">TABLICA POWIĄZAŃ · FOCUS CONSTELLATION</div><h3>${nodeCount} postaci · ${rel.length} bezpiecznych krawędzi</h3></div><span class="status-pill good">TYLKO JAWNE RELACJE</span></div>${relationConstellationHtml_(rel,bookId,portrait)}${ledger}`;
     } else if(characterCaseTab==='collisions'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">NIE POMYL ICH</div><h3>${collisions.length} par do rozróżnienia</h3></div><span class="status-pill muted">POMOC PAMIĘCIOWA</span></div><div class="visual-collision-grid">${collisions.map(r=>`<article class="visual-collision-card"><div class="visual-pair"><button data-character-id="${esc(cell(r,'Character A ID'))}">${portrait(cell(r,'Character A ID'),cell(r,'Character A'))}<strong>${esc(cell(r,'Character A'))}</strong></button><span>≠</span><button data-character-id="${esc(cell(r,'Character B ID'))}">${portrait(cell(r,'Character B ID'),cell(r,'Character B'))}<strong>${esc(cell(r,'Character B'))}</strong></button></div><p>${esc(cell(r,'Safe Disambiguator'))}</p><small>ryzyko pomyłki ${esc(cell(r,'Score'))}/100</small></article>`).join('')||'<div class="empty">Brak par do rozróżnienia.</div>'}</div>`;
+    } else if(characterCaseTab==='lineup'){
+      const prepared=ensureWitnessLineup_(bookId,dossiers,cast,collisions);
+      const lineupState=prepared.state, roster=prepared.roster;
+      if(roster.length<2){
+        stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">WITNESS LINE-UP</div><h3>Za mało bezpiecznych postaci do rundy</h3></div><span class="status-pill muted">SAFE ONLY</span></div><div class="empty">Line-Up uruchomi się automatycznie, gdy bezpieczna kartoteka będzie miała co najmniej dwie postacie.</div>`;
+      } else if(lineupState.round>=lineupState.order.length){
+        const missed=[...new Set(lineupState.misses)].map(id=>roster.find(x=>x.id===id)).filter(Boolean);
+        const review=missed.map(entry=>`<button class="witness-review-card" data-character-id="${esc(entry.id)}">${portrait(entry.id,entry.name)}<span><strong>${esc(entry.name)}</strong><small>${esc(humanRole(entry.role))}</small></span></button>`).join('');
+        const total=lineupState.order.length;
+        const verdict=lineupState.hits===total?'Kartoteka siedzi w głowie.':lineupState.hits>=Math.ceil(total*.6)?'Całkiem dobrze — kilka akt warto jeszcze przewertować.':'Idealny moment na szybkie przypomnienie akt.';
+        stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">WITNESS LINE-UP · KONIEC SESJI</div><h3>${esc(lineupState.hits)}/${esc(total)} rozpoznanych</h3></div><span class="status-pill good">EPHEMERAL</span></div><section class="witness-lineup-finish"><div class="witness-lineup-seal"><span>RECALL DRILL</span><strong>${esc(lineupState.hits)}/${esc(total)}</strong><small>${esc(verdict)}</small></div>${review?`<div class="witness-review"><div class="section-kicker">DO SZYBKIEGO PRZYPOMNIENIA</div><div class="witness-review-grid">${review}</div></div>`:'<p class="witness-perfect">Zero pudła. Możesz wracać do sprawy. 😎</p>'}<div class="witness-actions"><button type="button" class="button primary" data-lineup-restart>Jeszcze raz</button><button type="button" class="button" data-lineup-exit>Kokpit sprawy</button></div><p class="small-note">Wynik istnieje tylko w tej sesji interfejsu. Nie trafia do Taste Fit, Suspect Wall, Character Memory ani Read Next Score.</p></section>`;
+      } else {
+        const round=witnessLineupRound_(bookId,lineupState,roster,collisions);
+        if(!round){
+          stage.innerHTML='<div class="empty">Nie udało się zbudować bezpiecznej rundy.</div>';
+        } else {
+          const answered=!!lineupState.answered;
+          const optionHtml=round.options.map(entry=>{
+            const correct=answered&&entry.id===round.target.id;
+            const wrong=answered&&entry.id===lineupState.selectedId&&entry.id!==round.target.id;
+            const cls=correct?' correct':wrong?' wrong':'';
+            return `<button type="button" class="witness-option${cls}" data-lineup-answer="${esc(entry.id)}" ${answered?'disabled':''}>${portrait(entry.id,entry.name)}<span><strong>${esc(entry.name)}</strong><small>${esc(humanRole(entry.role))}</small></span></button>`;
+          }).join('');
+          const feedback=answered?(lineupState.selectedId===round.target.id?`<div class="witness-feedback correct">TRAFIONE · ${esc(round.target.name)}</div>`:`<div class="witness-feedback wrong">Nie tym razem — chodziło o <b>${esc(round.target.name)}</b>.</div>`):'<div class="witness-feedback idle">Wybierz postać pasującą do bezpiecznej notatki.</div>';
+          stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">${round.paired?'WITNESS LINE-UP · NIE POMYL':'WITNESS LINE-UP · KTO TO?'}</div><h3>Runda ${esc(lineupState.round+1)}/${esc(lineupState.order.length)}</h3></div><span class="status-pill muted">SAFE SURFACES ONLY</span></div><section class="witness-lineup-shell"><div class="witness-clue"><span>BEZPIECZNA NOTATKA</span><p>${esc(round.clue)}</p>${round.paired?'<small>Runda celowana: w opcjach jest aktywna para z tablicy „Nie pomyl”.</small>':'<small>Źródło: bieżąca bezpieczna kartoteka postaci.</small>'}</div><div class="witness-options">${optionHtml}</div>${feedback}<div class="witness-progress"><div><i style="width:${esc(((lineupState.round+(answered?1:0))/lineupState.order.length)*100)}%"></i></div><span>${esc(lineupState.hits)} trafień w tej sesji</span></div>${answered?'<div class="witness-actions"><button type="button" class="button primary" data-lineup-next>'+(lineupState.round===lineupState.order.length-1?'Zobacz podsumowanie':'Następna karta')+' →</button></div>':''}<p class="small-note">To ćwiczenie pamięci, nie test detektywistyczny. Zero model effect · zero guilt signal · zero rekomendacyjnego feedbacku.</p></section>`;
+        }
+      }
     } else if(characterCaseTab==='locations'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY</div><h3>${locations.length} miejsc</h3></div></div><div class="case-location-grid">${locations.map(r=>`<article class="case-location-card"><div class="case-location-pin">⌖</div><div><span>${esc(cell(r,'Location Role'))}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p></div></article>`).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
     } else if(characterCaseTab==='suspicions'){
@@ -1002,7 +1042,22 @@
     }
     $$('[data-playback-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.playbackIndex);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
     $$('[data-cockpit-time-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.cockpitTimeIndex);characterCaseTab='time';renderCharacters();}));
-    $$('[data-case-go]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.caseGo||'cockpit';renderCharacters();}));
+    $('[data-case-go]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.caseGo||'cockpit';renderCharacters();}));
+    $('[data-lineup-answer]',stage).forEach(el=>el.addEventListener('click',()=>{
+      if(witnessLineupState.answered)return;
+      const prepared=ensureWitnessLineup_(bookId,dossiers,cast,collisions);
+      const round=witnessLineupRound_(bookId,prepared.state,prepared.roster,collisions);
+      if(!round)return;
+      const selected=String(el.dataset.lineupAnswer||'');
+      witnessLineupState.selectedId=selected;
+      witnessLineupState.answered=true;
+      if(selected===round.target.id)witnessLineupState.hits+=1;
+      else if(!witnessLineupState.misses.includes(round.target.id))witnessLineupState.misses.push(round.target.id);
+      renderCharacterCaseStage(stage,bookId,dossiers,cast);
+    }));
+    $('[data-lineup-next]',stage).forEach(el=>el.addEventListener('click',()=>{witnessLineupState.round+=1;witnessLineupState.answered=false;witnessLineupState.selectedId='';renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $('[data-lineup-restart]',stage).forEach(el=>el.addEventListener('click',()=>{ensureWitnessLineup_(bookId,dossiers,cast,collisions,true);renderCharacterCaseStage(stage,bookId,dossiers,cast);}));
+    $('[data-lineup-exit]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab='cockpit';renderCharacters();}));
     wireRelationConstellation_(stage);
     $$('[data-character-id]',stage).forEach(el=>el.addEventListener('click',()=>openCharacterDossier(el.dataset.characterId)));
   }
