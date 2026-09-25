@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.5.1';
+  const FRONTEND_VERSION = '7.5.2';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -469,12 +469,20 @@
         data = normalizeData(payload);
         setSourceBadge('LIVE · CORE','good');
         const coreRenderErrors=renderAll();
-        if(coreRenderErrors.length) throw new Error('CORE_RENDER: '+coreRenderErrors.map(x=>x.label+': '+String(x.error?.message||x.error||'UNKNOWN')).join(' | '));
-        if(showToast) toast('Rdzeń LIVE gotowy · doczytuję moduły');
+        if(coreRenderErrors.length){
+          const labels=[...new Set(coreRenderErrors.map(x=>x.label))];
+          const detail=coreRenderErrors.map(x=>x.label+': '+String(x.error?.message||x.error||'UNKNOWN')).join('\n');
+          // renderAll already isolates each surface. Never demote the whole Cockpit
+          // to DEMO just because one owner-facing panel failed.
+          setSourceBadge(`LIVE · PROBLEM: ${labels.slice(0,2).join(' + ')}${labels.length>2?' +…':''}`,'warning',detail);
+          if(showToast) toast(`Dane LIVE są dostępne; nie działa tylko: ${labels.join(', ')}`);
+        }else if(showToast){
+          toast('Rdzeń LIVE gotowy · doczytuję moduły');
+        }
         phase='deferred-load';
         loadDeferredLiveData(false).catch(err=>{
           console.error('Crime Cockpit deferred hydration crashed',err);
-          setSourceBadge('LIVE · CORE · HYDRATION ERROR','warning');
+          setSourceBadge('LIVE · CZĘŚĆ DANYCH NIE DOCZYTAŁA SIĘ','warning');
         });
       } else {
         phase='demo-render';
@@ -1853,7 +1861,14 @@
       ['Detektywistyczne XP',a.xp,a.level]
     ].map(([l,v,d])=>`<div class="metric-card arcade-metric"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('');
     const activeBadges=a.badges.filter(b=>b.on);
-    passport.insertAdjacentHTML('afterend',`<div class="sleuth-badges">${a.badges.map(b=>`<span class="sleuth-badge ${b.on?'active':''}" title="${esc(b.why)}">${b.on?'◆':'◇'} ${esc(b.name)}</span>`).join('')}</div>`);
+    let badgeRoot=$('#readingArcadeBadges');
+    if(!badgeRoot){
+      badgeRoot=document.createElement('div');
+      badgeRoot.id='readingArcadeBadges';
+      badgeRoot.className='sleuth-badges';
+      passport.insertAdjacentElement('afterend',badgeRoot);
+    }
+    badgeRoot.innerHTML=a.badges.map(b=>`<span class="sleuth-badge ${b.on?'active':''}" title="${esc(b.why)}">${b.on?'◆':'◇'} ${esc(b.name)}</span>`).join('');
 
     const done=a.bingo.filter(([,on])=>on).length;
     bingoRoot.innerHTML=`<div class="bingo-score"><strong>${done}/9</strong><span>${done===9?'BINGO!':'odhaczone'}</span></div><div class="bingo-grid">${a.bingo.map(([label,on])=>`<div class="bingo-cell ${on?'done':''}"><span>${on?'✓':'·'}</span><strong>${esc(label)}</strong></div>`).join('')}</div><p class="small-note">Liczymy aktywność detektywistyczną, nie trafność. Zero nagrody za zgadywanie sprawcy przed końcem.</p>`;
