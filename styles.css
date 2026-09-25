@@ -489,3 +489,8 @@ footer{width:min(1500px,calc(100% - 48px));margin:0 auto;padding:20px 0 34px;bor
 .case-map-region-area{stroke:#87a9bd;fill:#87a9bd}.case-map-region-anchor{stroke:#9bb7c7;fill:#9bb7c7}
 .map-cluster-popup{display:grid;gap:4px;margin-top:8px;padding-top:7px;border-top:1px solid rgba(255,255,255,.14);max-width:280px}.map-cluster-popup>b{font-size:8px;color:#d7be83}.map-cluster-popup>span{display:block;font-size:7px;line-height:1.35;color:#a7b0b8}.map-cluster-popup strong{color:#d8dee3}
 .case-schematic-point.region>i{width:24px;height:24px;border:1px dotted #9bb7c7;border-radius:50%;background:rgba(135,169,189,.06)}
+
+/* v7.4.0 — Temptation Shield / current-case continuity */
+.queue-shield{display:flex;justify-content:space-between;gap:18px;align-items:center;padding:16px 18px;border:1px solid rgba(214,179,106,.22);border-radius:18px;background:linear-gradient(145deg,rgba(34,28,18,.72),rgba(17,22,29,.82));box-shadow:inset 3px 0 0 rgba(214,179,106,.62)}
+.queue-shield strong{display:block;font-family:Georgia,serif;font-size:18px;font-weight:500;margin:3px 0 5px}.queue-shield p{margin:0;color:var(--muted);font-size:12px;line-height:1.5}.queue-shield .status-pill{flex:0 0 auto}
+@media(max-width:720px){.queue-shield{align-items:flex-start;flex-direction:column}}
