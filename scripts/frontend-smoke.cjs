@@ -143,11 +143,11 @@ const checkpointUse=app.indexOf("const checkpointMarkers=frames.map");
 if (framesDecl < 0 || checkpointUse < 0 || framesDecl > checkpointUse) {
   throw new Error('Runtime regression: reading timeline uses frames before initialization.');
 }
-if (!app.includes("let phase='bootstrap';") || !app.includes("phase='core-request';") || !app.includes("phase='live-render';") || !app.includes("API OK · UI ERROR · DEMO")) {
+if (!app.includes("let phase='bootstrap';") || !app.includes("phase='core-request';") || !app.includes("phase='live-render';") || !app.includes("API działa · problem widoku")) {
   throw new Error('Live loading must distinguish API core failures from frontend render failures.');
 }
-if (!app.includes("API OK · CORE REQUEST ERROR · DEMO") || app.includes("API OK · CORE ERROR · DEMO")) {
-  throw new Error('Misleading generic CORE ERROR diagnosis must not return.');
+if (!app.includes("API DZIAŁA · DANE NIE DOTARŁY") || app.includes("API OK · CORE ERROR · DEMO")) {
+  throw new Error('Owner-facing core failure diagnosis is missing or generic CORE ERROR returned.');
 }
 if (!app.includes('OSTATNIE AKTUALIZACJE') || !app.includes('recentUpdatesHtml') || !css.includes('.case-update-strip{')) {
   throw new Error('Recent character/location updates rail is missing.');
