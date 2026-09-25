@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.5.2'",
-  "styles.css?v=7.5.2",
-  "demo-data.js?v=7.5.2",
-  "app.js?v=7.5.2"
+  "const FRONTEND_VERSION = '7.5.3'",
+  "styles.css?v=7.5.3",
+  "demo-data.js?v=7.5.3",
+  "app.js?v=7.5.3"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -283,6 +283,13 @@ if (!app.includes("LIVE · PROBLEM:") || !app.includes("renderAll already isolat
 }
 if (!app.includes("readingArcadeBadges") || app.includes("passport.insertAdjacentHTML('afterend'")) {
   throw new Error('Reading Arcade badges must re-render idempotently.');
+}
+
+if (/([^$]|^)\$\('\[data-room-book\]'\s*,\s*\$\('#readingRoomList'\)\)\.forEach/.test(app)) {
+  throw new Error('Reading Room must never call forEach on single-element selector helper.');
+}
+if (!app.includes("$$('[data-room-book]',$('#readingRoomList')).forEach")) {
+  throw new Error('Reading Room multi-element selector binding is missing.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
