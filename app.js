@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.1';
+  const FRONTEND_VERSION = '7.3.2';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -201,11 +201,12 @@
   function statusClass(status){ return ({'PROMOTE':'promote','WATCH':'watch','LOCKED':'locked','CURRENT NEXT':'current','READ':'read','BENCH':'bench','RETIRE':'retire','HOLD':'watch'})[status] || 'bench'; }
   function statusBadge(status){ return `<span class="status-badge ${statusClass(status)}">${esc(statusLabel(status))}</span>`; }
 
-  function setSourceBadge(label, cls='good') {
+  function setSourceBadge(label, cls='good', detail='') {
     const badge=$('#sourceBadge');
     if(!badge)return;
     badge.textContent=label;
     badge.className=`status-pill ${cls}`;
+    badge.title=detail||'';
   }
 
   function jsonp(url, token, params={}, timeoutMs=15000) {
@@ -258,9 +259,7 @@
   }
 
   async function loadDeferredLiveData(showToast=true) {
-    let partial=false;
-    const failures=[];
-    const groups=[
+    const semanticGroups=[
       ['undercoverGems','paretoShelf','seriesMap','memoryHalfLife','criticCrowdMe'],
       ['explanationDiff','predictionMarket','uncertaintyBudget','semanticQuarantine','sourceCalibration'],
       ['reviewIntelligence','tasteFrontier','enrichmentEngine','modelArena','antiRut'],
@@ -271,48 +270,80 @@
       ['characterRegistry','bookCast','characterRelations','characterEvidence','characterCoverage','castLoad','characterRecallEngine','identityCollisionLab','recurringCharacterRadar','characterProgressSync'],
       ['characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura']
     ];
-    const jobs=[
-      {label:'extras',run:()=>jsonp(state.apiUrl,state.token,{scope:'extras'},12000)},
-      ...groups.map((keys,index)=>({label:`modules-${index+1}`,keys,run:()=>jsonp(state.apiUrl,state.token,{scope:'modules',keys:keys.join(',')},12000)}))
+    const chunk_=(keys,size=6)=>Array.from({length:Math.ceil(keys.length/size)},(_,i)=>keys.slice(i*size,(i+1)*size));
+    const moduleBatches=semanticGroups.flatMap((keys,groupIndex)=>chunk_(keys,6).map((batch,batchIndex)=>({
+      label:`modules-${groupIndex+1}.${batchIndex+1}`,
+      keys:batch
+    })));
+    const initialJobs=[
+      {label:'extras',kind:'extras',run:()=>jsonp(state.apiUrl,state.token,{scope:'extras'},12000)},
+      ...moduleBatches.map(job=>({...job,kind:'modules',run:()=>jsonp(state.apiUrl,state.token,{scope:'modules',keys:job.keys.join(',')},12000)}))
     ];
-    const results=new Array(jobs.length);
-    let cursor=0,done=0;
-    setSourceBadge('LIVE · DOCZYTUJĘ 0/'+jobs.length,'good');
 
-    async function worker_(){
-      while(true){
-        const index=cursor++;
-        if(index>=jobs.length)return;
-        const job=jobs[index];
-        try{
-          results[index]={ok:true,payload:requireOk(await job.run()),job};
-        }catch(err){
-          partial=true;
-          failures.push({label:job.label,error:String(err?.message||err||'UNKNOWN')});
-          results[index]={ok:false,error:err,job};
-          console.warn('Crime Cockpit deferred load failed',job.label,job.keys||'',err);
-        }finally{
-          done+=1;
-          setSourceBadge(`LIVE · DOCZYTUJĘ ${done}/${jobs.length}`,partial?'warning':'good');
+    async function runJobs_(jobs,progressLabel,workers=4){
+      const results=new Array(jobs.length);
+      let cursor=0,done=0;
+      if(jobs.length)setSourceBadge(`LIVE · ${progressLabel} 0/${jobs.length}`,'good');
+      async function worker_(){
+        while(true){
+          const index=cursor++;
+          if(index>=jobs.length)return;
+          const job=jobs[index];
+          try{
+            results[index]={ok:true,payload:requireOk(await job.run()),job};
+          }catch(err){
+            results[index]={ok:false,error:err,job};
+            console.warn('Crime Cockpit deferred load failed',job.label,job.keys||'',err);
+          }finally{
+            done+=1;
+            const failedSoFar=results.filter(x=>x&&x.ok===false).length;
+            setSourceBadge(`LIVE · ${progressLabel} ${done}/${jobs.length}`,failedSoFar?'warning':'good');
+          }
         }
       }
+      await Promise.all(Array.from({length:Math.min(workers,jobs.length)},()=>worker_()));
+      return results;
     }
-    await Promise.all(Array.from({length:Math.min(4,jobs.length)},()=>worker_()));
 
-    results.filter(x=>x?.ok).forEach(x=>mergeLivePatch(x.payload));
+    const initial=await runJobs_(initialJobs,'DOCZYTUJĘ',4);
+    const successfulPayloads=initial.filter(x=>x?.ok).map(x=>x.payload);
+    const hardFailures=initial.filter(x=>x&&!x.ok&&x.job.kind!=='modules');
+    const failedModuleBatches=initial.filter(x=>x&&!x.ok&&x.job.kind==='modules');
+
+    const retryJobs=failedModuleBatches.flatMap(x=>x.job.keys.map(key=>({
+      label:`retry-${key}`,
+      kind:'module-retry',
+      keys:[key],
+      run:()=>jsonp(state.apiUrl,state.token,{scope:'modules',keys:key},12000)
+    })));
+    let retries=[];
+    if(retryJobs.length){
+      retries=await runJobs_(retryJobs,'ODZYSKUJĘ',Math.min(3,retryJobs.length));
+      successfulPayloads.push(...retries.filter(x=>x?.ok).map(x=>x.payload));
+    }
+    const retryFailures=retries.filter(x=>x&&!x.ok);
+    const failures=[...hardFailures,...retryFailures];
+
+    successfulPayloads.forEach(payload=>mergeLivePatch(payload));
     data=normalizeData(data);
     try{
       renderAll();
     }catch(err){
       console.error('Crime Cockpit deferred render failed',{failures,error:err});
-      setSourceBadge('LIVE · CORE · BŁĄD UI','warning');
+      setSourceBadge('LIVE · CORE · BŁĄD UI','warning',String(err?.message||err||'FRONTEND_RENDER_ERROR'));
       if(showToast)toast('Rdzeń LIVE działa, ale moduły dodatkowe mają błąd renderowania');
       return;
     }
-    setSourceBadge(partial?'LIVE · CZĘŚĆ MODUŁÓW':'LIVE',partial?'warning':'good');
-    if(showToast) toast(partial?'Rdzeń LIVE działa; część modułów nie została doczytana':'Dane LIVE i moduły gotowe');
-  }
 
+    if(failures.length){
+      const detail=failures.map(x=>`${x.job.label}: ${String(x.error?.message||x.error||'UNKNOWN')}`).join('\n');
+      setSourceBadge(`LIVE · BRAK ${failures.length} MODUŁÓW`,'warning',detail);
+      if(showToast)toast(`Rdzeń LIVE działa; ${failures.length} modułów nie udało się doczytać`);
+    }else{
+      setSourceBadge('LIVE','good');
+      if(showToast)toast('Dane LIVE i moduły gotowe');
+    }
+  }
   async function loadData(showToast=true) {
     $('#refreshBtn').textContent = '…';
     let phase='bootstrap';
