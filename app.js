@@ -510,8 +510,8 @@
 
   function setView(id, scroll=true){
     activeView=id;
-    $('.view').forEach(v=>v.classList.toggle('active',v.id===id));
-    $('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===id));
+    $$('.view').forEach(v=>v.classList.toggle('active',v.id===id));
+    $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.view===id));
     if(scroll) window.scrollTo({top:0,behavior:'smooth'});
     requestAnimationFrame(()=>{
       observeReveals();
