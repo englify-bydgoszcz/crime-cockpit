@@ -405,3 +405,55 @@ footer{width:min(1500px,calc(100% - 48px));margin:0 auto;padding:20px 0 34px;bor
   .reading-milestones span:nth-child(even){display:none}
   .case-real-map{height:300px}
 }
+
+
+/* === Crime Cockpit 7.3.0 — Location Intelligence ==================== */
+.case-map-legend-v2{display:flex;flex-wrap:wrap;gap:7px;margin-top:9px}
+.case-map-legend-v2 span{display:inline-flex;align-items:center;gap:6px;padding:5px 7px;border:1px solid rgba(255,255,255,.07);border-radius:999px;background:rgba(255,255,255,.025);color:#98a3ad;font-size:7px}
+.case-map-legend-v2 i{display:inline-block;width:9px;height:9px}
+.case-map-legend-v2 .verified i{border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:#dfaf4f}
+.case-map-legend-v2 .approx i{border:1.5px dashed #d9b96f;border-radius:50%;box-shadow:0 0 0 3px rgba(217,185,111,.08)}
+.case-map-legend-v2 .region i{border:1px dashed #87a9bd;border-radius:2px;background:rgba(135,169,189,.08)}
+.case-map-legend-v2 .story i{border:1px solid #6f7b85;border-radius:50%;opacity:.75}
+.case-map-approx-area{stroke-linecap:round}
+.case-map-approx-anchor{stroke:#d9b96f;fill:#d9b96f}
+.case-story-space.region-only summary{color:#9bb7c7}
+.case-story-space.region-only span{border-color:rgba(135,169,189,.13);background:rgba(135,169,189,.045);color:#93aebb}
+.case-story-space.region-only b{color:#c4d4dc}
+.case-update-location.approx i,.case-update-location.approx small{color:#d9b96f}
+.case-update-location.region i,.case-update-location.region small{color:#9bb7c7}
+.case-update-location.story i,.case-update-location.story small{color:#7c8791}
+.case-update-location small{max-width:66px;text-align:center;line-height:1.2;letter-spacing:.04em}
+.case-location-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:10px}
+.case-location-card{display:grid;grid-template-columns:108px minmax(0,1fr);gap:12px;padding:11px;border:1px solid rgba(255,255,255,.07);border-radius:14px;background:rgba(255,255,255,.02)}
+.case-location-card.verified{border-color:rgba(214,179,106,.22)}
+.case-location-card.approx{border-color:rgba(217,185,111,.16)}
+.case-location-card.region{border-color:rgba(135,169,189,.16)}
+.case-location-card.story{border-color:rgba(255,255,255,.055)}
+.case-location-visual{position:relative;min-height:112px;border:1px solid rgba(255,255,255,.06);border-radius:11px;display:grid;place-items:center;align-content:center;gap:4px;text-align:center;overflow:hidden;background:radial-gradient(circle at 70% 20%,rgba(214,179,106,.08),transparent 34%),linear-gradient(145deg,#151b20,#0e1317)}
+.case-location-visual:after{content:"";position:absolute;inset:9px;border:1px dashed rgba(255,255,255,.04);border-radius:8px;pointer-events:none}
+.case-location-visual i{font-style:normal;font-size:28px;color:#83909a}
+.case-location-visual span{max-width:88px;font:500 11px/1.15 Georgia,serif;color:#cfd5da}
+.case-location-visual small{font-size:6px;line-height:1.25;color:#727e88}
+.case-location-visual.verified i{color:#dfaf4f}
+.case-location-visual.approx i{color:#d9b96f}
+.case-location-visual.region i{color:#9bb7c7}
+.case-location-visual.has-image{display:block}
+.case-location-visual.has-image img{width:100%;height:112px;display:block;object-fit:cover}
+.case-location-visual.has-image small{position:absolute;left:5px;right:5px;bottom:5px;padding:4px;border-radius:6px;background:rgba(8,11,14,.74);color:#d9dde0;z-index:2}
+.case-location-copy{min-width:0}
+.case-location-status{display:inline-flex;padding:4px 6px;border-radius:999px;border:1px solid rgba(255,255,255,.07);font-size:6px;font-weight:850;letter-spacing:.05em;text-transform:uppercase;color:#9ca6ae}
+.case-location-status.verified{color:#e8c779;border-color:rgba(214,179,106,.18);background:rgba(214,179,106,.045)}
+.case-location-status.approx{color:#d9bf83;border-style:dashed}
+.case-location-status.region{color:#a8c2d0;border-color:rgba(135,169,189,.18);background:rgba(135,169,189,.04)}
+.case-location-copy h4{margin:7px 0 5px;font:500 16px/1.1 Georgia,serif}
+.case-location-copy p{margin:0;color:#9aa4ad;font-size:8px;line-height:1.5}
+.case-location-region,.case-location-basis{margin-top:7px;padding-top:6px;border-top:1px solid rgba(255,255,255,.055);color:#7f8b94;font-size:7px;line-height:1.45}
+.case-location-region b,.case-location-basis b{color:#aeb8c0}
+.case-location-copy small{display:block;margin-top:7px;color:#66727c;font-size:7px}
+.case-location-copy em{display:block;margin-top:4px;color:#827461;font-style:normal;font-size:6px;letter-spacing:.03em}
+@media(max-width:620px){
+  .case-location-grid{grid-template-columns:1fr}
+  .case-location-card{grid-template-columns:88px minmax(0,1fr)}
+  .case-location-visual{min-height:96px}.case-location-visual.has-image img{height:96px}
+}

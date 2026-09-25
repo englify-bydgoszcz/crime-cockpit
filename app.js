@@ -1,20 +1,38 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.2.2';
+  const FRONTEND_VERSION = '7.3.0';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
-      'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID'},
-      'LOC-0002':{status:'REAL VERIFIED',lat:51.507222,lng:-0.127500,label:'Londyn',precision:'CITY CENTRE'},
-      'LOC-0008':{status:'REAL VERIFIED',lat:51.381389,lng:-2.359722,label:'Bath',precision:'CITY CENTRE'},
-      'LOC-0009':{status:'REAL VERIFIED',lat:50.850000,lng:0.570000,label:'Hastings',precision:'TOWN CENTRE'},
-      'LOC-0010':{status:'REAL VERIFIED',lat:51.335970,lng:-2.279870,label:'Lower Westwood',precision:'SETTLEMENT'},
-      'LOC-0011':{status:'REAL VERIFIED',lat:51.394010,lng:-2.390610,label:'Royal United Hospital',precision:'CAMPUS'},
-      'LOC-0019':{status:'REAL VERIFIED',lat:51.320000,lng:-2.206944,label:'Trowbridge',precision:'TOWN CENTRE'},
-      'LOC-0021':{status:'REAL VERIFIED',lat:51.520599,lng:-0.147700,label:'Harley Street',precision:'STREET REFERENCE'},
-      'LOC-0022':{status:'REAL VERIFIED',lat:51.521070,lng:-0.099830,label:'Charterhouse Square',precision:'SQUARE'},
-      'LOC-0024':{status:'REAL VERIFIED',lat:51.161270,lng:-1.753170,label:'Boscombe Down',precision:'SITE REFERENCE'},
-      'LOC-0028':{status:'REAL VERIFIED',lat:51.521944,lng:-0.071667,label:'Brick Lane',precision:'STREET REFERENCE'}
+      'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
+      'LOC-0002':{status:'REAL VERIFIED',lat:51.507222,lng:-0.127500,label:'Londyn',precision:'CITY CENTRE',confidence:95},
+      'LOC-0003':{status:'STORY SPACE',label:'Saxby-on-Avon',confidence:100,basis:'Brak niezależnie zweryfikowanej lokalizacji.'},
+      'LOC-0004':{status:'STORY SPACE',label:'Pye Hall',confidence:100,basis:'Posiadłość fabularna; brak bezpiecznej dokładnej lokalizacji.'},
+      'LOC-0005':{status:'STORY SPACE',label:'Dingle Dell',confidence:100,basis:'Niejednoznaczna nazwa lasu; brak bezpiecznej dokładnej lokalizacji.'},
+      'LOC-0006':{status:'STORY SPACE',label:'kościół Świętego Botolfa',confidence:100,basis:'Wiele realnych kościołów nosi to wezwanie; tożsamość miejsca w historii nie jest zweryfikowana.'},
+      'LOC-0007':{status:'STORY SPACE',label:'Queen’s Arms',confidence:100,basis:'Niejednoznaczna nazwa pubu; brak zweryfikowanego dopasowania.'},
+      'LOC-0008':{status:'REAL VERIFIED',lat:51.381389,lng:-2.359722,label:'Bath',precision:'CITY CENTRE',confidence:95},
+      'LOC-0009':{status:'REAL VERIFIED',lat:50.850000,lng:0.570000,label:'Hastings',precision:'TOWN CENTRE',confidence:90},
+      'LOC-0010':{status:'REAL VERIFIED',lat:51.335970,lng:-2.279870,label:'Lower Westwood',precision:'SETTLEMENT',confidence:95},
+      'LOC-0011':{status:'REAL VERIFIED',lat:51.394010,lng:-2.390610,label:'Royal United Hospital',precision:'CAMPUS',confidence:95},
+      'LOC-0012':{status:'STORY SPACE',label:'rzeka Avon',confidence:100,basis:'Realna nazwa rzeki, ale bezpieczny tekst nie ustala konkretnego odcinka.'},
+      'LOC-0019':{status:'REAL VERIFIED',lat:51.320000,lng:-2.206944,label:'Trowbridge',precision:'TOWN CENTRE',confidence:95},
+      'LOC-0020':{status:'STORY SPACE',label:'Ferryman',confidence:100,basis:'Niejednoznaczna nazwa lokalu; brak zweryfikowanego dopasowania.'},
+      'LOC-0021':{status:'REAL VERIFIED',lat:51.520599,lng:-0.147700,label:'Harley Street',precision:'STREET REFERENCE',confidence:85},
+      'LOC-0022':{status:'REAL VERIFIED',lat:51.521070,lng:-0.099830,label:'Charterhouse Square',precision:'SQUARE',confidence:95},
+      'LOC-0023':{status:'STORY-INFERRED APPROX',lat:51.521070,lng:-0.099830,label:'Tanner Court',precision:'APPROX',radiusKm:0.25,region:'Charterhouse Square, Londyn',confidence:90,basis:'Bezpieczny tekst lokuje Tanner Court przy Charterhouse Square; środek placu jest kotwicą obszaru, nie adresem budynku.'},
+      'LOC-0024':{status:'REAL VERIFIED',lat:51.161270,lng:-1.753170,label:'Boscombe Down',precision:'SITE REFERENCE',confidence:95},
+      'LOC-0025':{status:'REGION ONLY',label:'Carlotta’s',region:'okolice Harrods, Londyn',confidence:90,basis:'Bezpieczny opis lokuje restaurację za Harrods; dokładny adres nie jest ustalony.'},
+      'LOC-0026':{status:'STORY SPACE',label:'King’s Abbott',confidence:100,basis:'Brak niezależnie zweryfikowanej lokalizacji.'},
+      'LOC-0027':{status:'REGION ONLY',label:'Ashton House',region:'dolina Bath / okolice Bath',confidence:90,basis:'Bezpieczny opis mówi o dawnym szpitalu w dolinie Bath; dokładny obiekt nie jest ustalony.'},
+      'LOC-0028':{status:'REAL VERIFIED',lat:51.521944,lng:-0.071667,label:'Brick Lane',precision:'STREET REFERENCE',confidence:85}
+    }
+  };
+  const LOCATION_VISUAL_CACHE = {
+    'BK00002': {
+      'LOC-0023':{status:'PLACEHOLDER',basis:'Elegancki budynek przy Charterhouse Square; dokładna fasada i wejście nie są ustalone.'},
+      'LOC-0025':{status:'PLACEHOLDER',basis:'Rodzinny włoski lokal w rejonie za Harrods; bez dokładnego adresu i fasady.'},
+      'LOC-0027':{status:'PLACEHOLDER',basis:'Dawny szpital przekształcony w dom opieki w dolinie Bath; dokładna lokalizacja i architektura nie są ustalone.'}
     }
   };
   const PORTRAIT_WEB_CACHE = {
@@ -580,6 +598,53 @@
     const x=String(v||'').toUpperCase();
     return ({'HIGH':'WYSOKIE','MEDIUM':'ŚREDNIE','LOW':'NISKIE','PIN':'PRIORYTET'})[x] || v || '—';
   }
+  function humanGeoStatus_(status=''){
+    const x=String(status||'STORY SPACE').toUpperCase();
+    return ({
+      'REAL VERIFIED':'Zweryfikowane miejsce',
+      'STORY-INFERRED APPROX':'Przybliżona lokalizacja',
+      'REGION ONLY':'Znamy tylko region',
+      'STORY SPACE':'Przestrzeń fabularna'
+    })[x] || 'Przestrzeń fabularna';
+  }
+  function geoStatusClass_(status=''){
+    const x=String(status||'STORY SPACE').toUpperCase();
+    return x==='REAL VERIFIED'?'verified':x==='STORY-INFERRED APPROX'?'approx':x==='REGION ONLY'?'region':'story';
+  }
+  function humanCheckpoint_(value=''){
+    let s=String(value||'').trim();
+    if(!s)return '—';
+    s=s.replace(/\s*[·|]\s*(?:Text\/)?[^·|\s]*\.xhtml\b/gi,'');
+    s=s.replace(/\b(?:Text\/)?[^\s·|]*\.xhtml\b/gi,'');
+    s=s.replace(/\s{2,}/g,' ').replace(/\s*[·|]\s*$/,'').trim();
+    return s||'—';
+  }
+  function locationGeo_(bookId,locationId){
+    return (LOCATION_GEO_CACHE[String(bookId)]||{})[String(locationId)]||{status:'STORY SPACE',confidence:0};
+  }
+  function locationVisual_(bookId,locationId){
+    const rows=moduleRows('locationAssets').filter(r=>String(cell(r,'Book ID'))===String(bookId)&&String(cell(r,'Location ID'))===String(locationId));
+    const live=rows[0]||null;
+    if(live){
+      return {
+        status:String(cell(live,'Visual Status')||'PLACEHOLDER').toUpperCase(),
+        asset:String(cell(live,'Visual Asset')||cell(live,'Drive URL')||''),
+        basis:String(cell(live,'Visual Prompt Basis')||cell(live,'Safe Visual Evidence')||'')
+      };
+    }
+    return (LOCATION_VISUAL_CACHE[String(bookId)]||{})[String(locationId)]||{status:'PLACEHOLDER',asset:'',basis:''};
+  }
+  function locationVisualHtml_(bookId,row,geo){
+    const id=String(cell(row,'Location ID')||'');
+    const name=String(cell(row,'Display Name')||geo?.label||id);
+    const visual=locationVisual_(bookId,id);
+    const cls=geoStatusClass_(geo?.status);
+    const icon=cls==='verified'?'⌖':cls==='approx'?'◌':cls==='region'?'≈':'◇';
+    if(visual.asset&&/^https?:\/\//i.test(visual.asset)){
+      return `<div class="case-location-visual ${cls} has-image"><img src="${esc(visual.asset)}" alt="Poglądowa wizualizacja miejsca: ${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="const p=this.parentElement;if(p){p.classList.remove('has-image');this.remove();}"/><small>Wizualizacja poglądowa</small></div>`;
+    }
+    return `<div class="case-location-visual ${cls}"><i>${icon}</i><span>${esc(name)}</span><small>${esc(humanGeoStatus_(geo?.status))}</small></div>`;
+  }
   function humanRecall(v=''){
     const x=String(v||'').toUpperCase();
     return ({'PIN':'PRIORYTET','HIGH':'WYSOKIE','MEDIUM':'ŚREDNIE','LOW':'NISKIE'})[x] || v || '—';
@@ -845,29 +910,39 @@
     return {target,paired:!!counterpart,options:lineupShuffle_(options,bookId+'|'+state.cycle+'|'+state.round+'|semantic-display'),clue:witnessLineupClue_(target)};
   }
   function caseGeoRows_(bookId,locations){
-    const cache=LOCATION_GEO_CACHE[String(bookId)]||{};
-    return (locations||[]).map(r=>({row:r,geo:cache[String(cell(r,'Location ID'))]||null})).filter(x=>x.geo&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lng));
+    return (locations||[]).map(r=>({row:r,geo:locationGeo_(bookId,cell(r,'Location ID'))}));
   }
   function initCaseGeoMap_(stage,bookId,locations){
     const el=$('[data-case-real-map]',stage); if(!el)return;
     if(stage._caseLeafletMap){try{stage._caseLeafletMap.remove();}catch(_err){} stage._caseLeafletMap=null;}
-    const verified=caseGeoRows_(bookId,locations);
-    if(!verified.length){el.innerHTML='<div class="case-map-fallback">Brak zweryfikowanych współrzędnych dla tej sprawy.</div>';return;}
+    const mappable=caseGeoRows_(bookId,locations).filter(x=>['REAL VERIFIED','STORY-INFERRED APPROX'].includes(String(x.geo?.status||''))&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lng));
+    if(!mappable.length){el.innerHTML='<div class="case-map-fallback">Na tym etapie nie ma miejsc, które można uczciwie osadzić na mapie.</div>';return;}
     if(!window.L){
-      el.innerHTML='<div class="case-map-fallback">Mapa bazowa nie załadowała się. Zweryfikowane miejsca pozostają dostępne na liście poniżej.</div>';
+      el.innerHTML='<div class="case-map-fallback">Mapa bazowa nie załadowała się. Statusy lokalizacji i ich poziom pewności pozostają dostępne na liście poniżej.</div>';
       return;
     }
     const map=L.map(el,{zoomControl:true,scrollWheelZoom:false});
     stage._caseLeafletMap=map;
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
     const bounds=[];
-    verified.forEach(({row,geo})=>{
-      const ll=[geo.lat,geo.lng];bounds.push(ll);
+    mappable.forEach(({row,geo})=>{
+      const ll=[geo.lat,geo.lng];
       const mentions=cell(row,'Mention Count');
-      const icon=L.divIcon({className:'case-map-marker',html:'<span></span>',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-9]});
-      L.marker(ll,{icon}).addTo(map).bindPopup(`<strong>${esc(cell(row,'Display Name'))}</strong><br><span>${esc(cell(row,'Who/what is this?')||'')}</span>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
+      const name=cell(row,'Display Name')||geo.label||'Miejsce';
+      const safeFact=cell(row,'Who/what is this?')||'';
+      if(String(geo.status)==='REAL VERIFIED'){
+        bounds.push(ll);
+        const icon=L.divIcon({className:'case-map-marker',html:'<span></span>',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-9]});
+        L.marker(ll,{icon}).addTo(map).bindPopup(`<strong>${esc(name)}</strong><br><span>Zweryfikowane miejsce</span><br><small>${esc(safeFact)}</small>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
+      } else {
+        const radiusM=Math.max(100,Number(geo.radiusKm||0.25)*1000);
+        const circle=L.circle(ll,{radius:radiusM,weight:1.5,dashArray:'7 6',fillOpacity:.08,opacity:.75,className:'case-map-approx-area'}).addTo(map);
+        bounds.push(...[circle.getBounds().getSouthWest(),circle.getBounds().getNorthEast()]);
+        L.circleMarker(ll,{radius:5,weight:1.5,fillOpacity:.22,className:'case-map-approx-anchor'}).addTo(map)
+          .bindPopup(`<strong>${esc(name)}</strong><br><span>Przybliżona lokalizacja · promień ok. ${esc(geo.radiusKm||0.25)} km</span><br><small>${esc(geo.basis||safeFact)}</small>`);
+      }
     });
-    if(bounds.length===1)map.setView(bounds[0],12); else map.fitBounds(bounds,{padding:[28,28],maxZoom:10});
+    if(bounds.length===1)map.setView(bounds[0],12); else map.fitBounds(bounds,{padding:[28,28],maxZoom:11});
     setTimeout(()=>map.invalidateSize(),40);
   }
 
@@ -895,7 +970,7 @@
     const archive=bookId!==String(data.current.id||'');
     const opts=dossierBooks.map(id=>{const b=bookById(id)||{};return `<option value="${esc(id)}" ${id===bookId?'selected':''}>${esc(b.title||id)}</option>`}).join('');
     const pulse=(!archive&&latestDelta&&String(cell(latestDelta,'From Snapshot')||'').toUpperCase()!=='NONE')?`<div class="case-pulse" aria-label="Zmiany od poprzedniego checkpointu"><div class="case-pulse-label"><span>CASE PULSE</span><strong>Od ${esc(cell(deltaFrom,'Progress')||cell(latestDelta,'From Snapshot')||'poprzedniego checkpointu')}</strong></div><div class="case-pulse-stats"><span><b>${deltaSigned(cell(latestDelta,'Cast Δ'))}</b> postaci</span><span><b>${deltaSigned(cell(latestDelta,'Relations Δ'))}</b> relacje</span><span><b>${deltaSigned(cell(latestDelta,'Locations Δ'))}</b> miejsca</span><span><b>${deltaSigned(cell(latestDelta,'Portrait-ready Δ'))}</b> portrait-ready</span></div><small>Tylko suche przyrosty bezpiecznych danych. Zero interpretacji fabuły.</small></div>`:'';
-    hero.innerHTML=`<div class="casefile-hero-copy"><div class="section-kicker">${archive?'ARCHIWALNE AKTA':'AKTA BIEŻĄCEJ SPRAWY'} · ${esc(bookId||'—')}</div><div class="case-book-switch"><h2>${esc(book.title||data.current.title||'Książka')}</h2><select id="caseBookSelect">${opts}</select></div><p>${archive?'Pełny widok po lekturze. Możemy korzystać z całego tekstu i wszystkich bezpiecznych danych post-read.':'Widok operacyjny zna tylko stan do potwierdzonego checkpointu. Każda karta, relacja, lokalizacja i teoria dziedziczy Spoiler Firewall.'}</p><div class="casefile-hero-chips"><span class="chip brass">postęp: ${esc(progress)}</span><span class="chip green">${archive?'PO LEKTURZE':'BEZPIECZNE DO TEGO MIEJSCA'}</span><span class="chip">${esc(safeN)} postaci</span><span class="chip">${esc(locations.length)} miejsc</span><span class="chip">${esc(pins.length)} przypięte teorie</span></div>${pulse}</div><div class="casefile-hero-metrics"><div><span>Wsparcie pamięci</span><strong>${esc(loadVal|| (archive?'ARCHIWUM':'—'))}</strong><small>${esc(loadClass)}</small></div><div><span>Portrety</span><strong>${esc(portraitN)}</strong><small>dostępnych teraz</small></div><div><span>Granica wiedzy</span><strong>${esc(archive?'pełna książka':cell(sync,'Safe Through')||'—')}</strong><small>${archive?'READ COMPLETE':`stop przed ${esc(cell(sync,'Stop Before')||'—')}`}</small></div></div>`;
+    hero.innerHTML=`<div class="casefile-hero-copy"><div class="section-kicker">${archive?'ARCHIWALNE AKTA':'AKTA BIEŻĄCEJ SPRAWY'} · ${esc(bookId||'—')}</div><div class="case-book-switch"><h2>${esc(book.title||data.current.title||'Książka')}</h2><select id="caseBookSelect">${opts}</select></div><p>${archive?'Pełny widok po lekturze. Możemy korzystać z całego tekstu i wszystkich bezpiecznych danych post-read.':'Widok operacyjny zna tylko stan do potwierdzonego checkpointu. Każda karta, relacja, lokalizacja i teoria dziedziczy Spoiler Firewall.'}</p><div class="casefile-hero-chips"><span class="chip brass">postęp: ${esc(progress)}</span><span class="chip green">${archive?'PO LEKTURZE':'BEZPIECZNE DO TEGO MIEJSCA'}</span><span class="chip">${esc(safeN)} postaci</span><span class="chip">${esc(locations.length)} miejsc</span><span class="chip">${esc(pins.length)} przypięte teorie</span></div>${pulse}</div><div class="casefile-hero-metrics"><div><span>Wsparcie pamięci</span><strong>${esc(loadVal|| (archive?'ARCHIWUM':'—'))}</strong><small>${esc(loadClass)}</small></div><div><span>Portrety</span><strong>${esc(portraitN)}</strong><small>dostępnych teraz</small></div><div><span>Granica wiedzy</span><strong>${esc(archive?'pełna książka':humanCheckpoint_(cell(sync,'Safe Through')))}</strong><small>${archive?'READ COMPLETE':`stop przed ${esc(humanCheckpoint_(cell(sync,'Stop Before')))}`}</small></div></div>`;
     const sel=$('#caseBookSelect'); if(sel) sel.onchange=()=>{characterCaseBookId=sel.value;casePlaybackIndex=-1;renderCharacters();};
     $$('.casefile-tab',$('#characterCaseTabs')).forEach(b=>b.classList.toggle('active',b.dataset.characterCaseTab===characterCaseTab));
     renderCharacterCaseStage(stage,bookId,dossiers,cast);
@@ -1093,8 +1168,10 @@
       const recentItems=[...recentCharacters,...recentLocations].sort((a,b)=>b.page-a.page||(b.type==='CHARACTER'?1:-1)).slice(0,6);
       const recentUpdatesHtml=recentItems.map(item=>{
         if(item.type==='CHARACTER')return `<button class="case-update-card" data-character-id="${esc(item.id)}"><div class="case-update-visual">${portrait(item.id,item.name)}</div><div><span>NOWA POSTAĆ</span><strong>${esc(item.name)}</strong><small>${esc(item.subtitle)}</small><em>p${esc(item.page)} · ${esc(item.mentions)} wzm.</em></div></button>`;
-        const verified=!!((LOCATION_GEO_CACHE[String(bookId)]||{})[item.id]);
-        return `<button class="case-update-card" data-case-go="locations"><div class="case-update-location ${verified?'verified':''}"><i>⌖</i><small>${verified?'REAL MAP':'STORY'}</small></div><div><span>NOWA LOKALIZACJA</span><strong>${esc(item.name)}</strong><small>${esc(item.subtitle)}</small><em>p${esc(item.page)} · ${esc(item.mentions)} wzm.</em></div></button>`;
+        const geo=locationGeo_(bookId,item.id);
+        const geoClass=geoStatusClass_(geo.status);
+        const geoIcon=geoClass==='verified'?'⌖':geoClass==='approx'?'◌':geoClass==='region'?'≈':'◇';
+        return `<button class="case-update-card" data-case-go="locations"><div class="case-update-location ${geoClass}"><i>${geoIcon}</i><small>${esc(humanGeoStatus_(geo.status))}</small></div><div><span>NOWA LOKALIZACJA</span><strong>${esc(item.name)}</strong><small>${esc(item.subtitle)}</small><em>p${esc(item.page)} · ${esc(item.mentions)} wzm.</em></div></button>`;
       }).join('')||'<div class="empty">Brak nowych postaci lub miejsc od poprzedniego checkpointu.</div>';
       const frames=playback.filter(r=>String(cell(r,'Book ID'))===String(bookId));
       const dotCount=totalPages?Math.min(96,Math.max(64,Math.round(totalPages/6))):64;
@@ -1104,10 +1181,13 @@
       const milestonePages=totalPages?[1,...Array.from({length:Math.floor(totalPages/50)},(_,i)=>(i+1)*50).filter(p=>p<totalPages),totalPages]:[];
       const milestoneLabels=milestonePages.map(p=>`<span style="left:${Math.max(0,Math.min(100,p/totalPages*100))}%">${p===1?'1':'p'+p}</span>`).join('');
       const goalLeft=totalPages&&nextGoal?Math.max(0,Math.min(100,nextGoal/totalPages*100)):0;
-      const verifiedGeo=caseGeoRows_(bookId,locations);
-      const geoCache=LOCATION_GEO_CACHE[String(bookId)]||{};
-      const storyOnly=locations.filter(r=>!geoCache[String(cell(r,'Location ID'))]);
-      const storyOnlyHtml=storyOnly.map(r=>`<span>${esc(cell(r,'Display Name'))}</span>`).join('');
+      const geoRows=caseGeoRows_(bookId,locations);
+      const verifiedGeo=geoRows.filter(x=>String(x.geo?.status)==='REAL VERIFIED');
+      const approxGeo=geoRows.filter(x=>String(x.geo?.status)==='STORY-INFERRED APPROX');
+      const regionGeo=geoRows.filter(x=>String(x.geo?.status)==='REGION ONLY');
+      const storyOnly=geoRows.filter(x=>String(x.geo?.status)==='STORY SPACE');
+      const storyOnlyHtml=storyOnly.map(x=>`<span>${esc(cell(x.row,'Display Name'))}</span>`).join('');
+      const regionHtml=regionGeo.map(x=>`<span><b>${esc(cell(x.row,'Display Name'))}</b> · ${esc(x.geo.region||'szerszy obszar')}</span>`).join('');
 
       const latestPage=Math.max(1,...frames.map(r=>parseInt(String(cell(r,'Progress')||'').match(/\d+/)?.[0]||'0',10)));
       const timeline=frames.map((r,i)=>{
@@ -1193,7 +1273,7 @@
           </section>
 
           <section class="cockpit-panel cockpit-confusion">
-            <div class="cockpit-panel-head"><div><span>NIE POMYL</span><strong>reader confusion memory</strong></div><button data-case-go="collisions">wszystkie pary →</button></div>
+            <div class="cockpit-panel-head"><div><span>NIE POMYL</span><strong>najczęstsza pułapka pamięci</strong></div><button data-case-go="collisions">wszystkie pary →</button></div>
             ${confusion}
           </section>
 
@@ -1211,10 +1291,12 @@
           </section>
 
           <section class="cockpit-panel cockpit-story-map">
-            <div class="cockpit-panel-head"><div><span>MAPA SPRAWY</span><strong>hybrydowa geografia · ${esc(verifiedGeo.length)} real / ${esc(storyOnly.length)} story-space</strong></div><button data-case-go="locations">lista miejsc →</button></div>
-            <div class="case-real-map" data-case-real-map aria-label="Zweryfikowana mapa rzeczywistych miejsc sprawy"></div>
-            <div class="case-map-contract"><span>REAL MAP · tylko niezależnie zweryfikowane współrzędne</span><small>OpenStreetMap · fikcyjne i niejednoznaczne miejsca nie dostają zmyślonych pinezek.</small></div>
-            ${storyOnly.length?`<details class="case-story-space"><summary>Story Space · ${esc(storyOnly.length)} miejsc bez geokodowania</summary><div>${storyOnlyHtml}</div></details>`:''}
+            <div class="cockpit-panel-head"><div><span>MAPA SPRAWY</span><strong>${esc(verifiedGeo.length)} zweryfikowanych · ${esc(approxGeo.length)} przybliżonych · ${esc(regionGeo.length)} regionalnych · ${esc(storyOnly.length)} fabularnych</strong></div><button data-case-go="locations">lista miejsc →</button></div>
+            <div class="case-real-map" data-case-real-map aria-label="Mapa miejsc sprawy z jawnym poziomem pewności lokalizacji"></div>
+            <div class="case-map-legend-v2" aria-label="Legenda mapy"><span class="verified"><i></i>Zweryfikowane miejsce</span><span class="approx"><i></i>Przybliżona lokalizacja</span><span class="region"><i></i>Znamy tylko region</span><span class="story"><i></i>Przestrzeń fabularna</span></div>
+            <div class="case-map-contract"><span>Mapa pokazuje pewność, nie udaje precyzji</span><small>Klasyczna pinezka oznacza wyłącznie miejsce zweryfikowane. Halo = przybliżenie; region i przestrzeń fabularna pozostają bez dokładnej pinezki.</small></div>
+            ${regionGeo.length?`<details class="case-story-space region-only"><summary>Znamy tylko region · ${esc(regionGeo.length)}</summary><div>${regionHtml}</div></details>`:''}
+            ${storyOnly.length?`<details class="case-story-space"><summary>Przestrzeń fabularna · ${esc(storyOnly.length)} bez dokładnej lokalizacji</summary><div>${storyOnlyHtml}</div></details>`:''}
           </section>
 
           <section class="cockpit-panel cockpit-notebook">
@@ -1271,9 +1353,11 @@
         }
       }
     } else if(characterCaseTab==='locations'){
-      const cache=LOCATION_GEO_CACHE[String(bookId)]||{};
-      const verified=caseGeoRows_(bookId,locations);
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY · HYBRID VERIFIED GEOGRAPHY</div><h3>${locations.length} miejsc · ${verified.length} z prawdziwą pinezką</h3><p>Rzeczywiste miejsca trafiają na OpenStreetMap dopiero po niezależnej weryfikacji. Nazwy fikcyjne lub niejednoznaczne zostają w Story Space.</p></div><span class="status-pill good">NO FAKE COORDINATES</span></div><div class="case-real-map case-real-map-large" data-case-real-map></div><div class="case-location-grid">${locations.map(r=>{const id=String(cell(r,'Location ID')||''),g=cache[id];return `<article class="case-location-card ${g?'verified':''}"><div class="case-location-pin">⌖</div><div><span>${esc(g?'REAL MAP · '+g.precision:'STORY SPACE')}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p><small>${esc(cell(r,'Mention Count')||'—')} wzmianek · pierwsze p${esc(cell(r,'First Page')||'—')} · ostatnio p${esc(cell(r,'Last Page')||'—')}</small></div></article>`}).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
+      const geoRows=caseGeoRows_(bookId,locations);
+      const verified=geoRows.filter(x=>String(x.geo?.status)==='REAL VERIFIED').length;
+      const approximate=geoRows.filter(x=>String(x.geo?.status)==='STORY-INFERRED APPROX').length;
+      const regional=geoRows.filter(x=>String(x.geo?.status)==='REGION ONLY').length;
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY · LOCATION INTELLIGENCE</div><h3>${locations.length} miejsc · ${verified} zweryfikowanych · ${approximate} przybliżonych · ${regional} regionalnych</h3><p>Mapa rozróżnia fakt, sensowne przybliżenie, sam region i przestrzeń fabularną. Dokładna pinezka jest zarezerwowana dla zweryfikowanego miejsca.</p></div><span class="status-pill good">UCZCIWA PRECYZJA</span></div><div class="case-real-map case-real-map-large" data-case-real-map></div><div class="case-map-legend-v2"><span class="verified"><i></i>Zweryfikowane miejsce</span><span class="approx"><i></i>Przybliżona lokalizacja</span><span class="region"><i></i>Znamy tylko region</span><span class="story"><i></i>Przestrzeń fabularna</span></div><div class="case-location-grid">${locations.map(r=>{const id=String(cell(r,'Location ID')||''),g=locationGeo_(bookId,id),cls=geoStatusClass_(g.status),visual=locationVisual_(bookId,id);return `<article class="case-location-card ${cls}">${locationVisualHtml_(bookId,r,g)}<div class="case-location-copy"><span class="case-location-status ${cls}">${esc(humanGeoStatus_(g.status))}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p>${g.region?`<div class="case-location-region"><b>Obszar:</b> ${esc(g.region)}</div>`:''}${g.basis?`<div class="case-location-basis"><b>Skąd to wiemy:</b> ${esc(g.basis)}</div>`:''}<small>${esc(cell(r,'Mention Count')||'—')} wzmianek · pierwsze p${esc(cell(r,'First Page')||'—')} · ostatnio p${esc(cell(r,'Last Page')||'—')} · pewność geo ${esc(g.confidence||'—')}%</small><em>${esc(visual.status==='PLACEHOLDER'?'Wizualizacja: bezpieczny placeholder':'Wizualizacja poglądowa')}</em></div></article>`}).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
     } else if(characterCaseTab==='suspicions'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ŚCIANA PODEJRZEŃ</div><h3>Twoje hipotezy, nie werdykt systemu</h3></div><span class="status-pill warning">ASYSTENT NIE OCENIA WINY</span></div><div class="suspect-wall-ui">${walls.map(r=>`<article class="suspect-wall-card ${esc(String(cell(r,'Visual State')).toLowerCase())}">${portrait(cell(r,'Character ID'),cell(r,'Character'))}<div><span>${esc(cell(r,'Progress'))}</span><h4>${esc(cell(r,'Character'))}</h4><strong>${esc(cell(r,'Pin Type'))}</strong><p>${esc(cell(r,'Text'))}</p></div></article>`).join('')||'<div class="empty">Brak przypiętych hipotez.</div>'}</div>`;
     } else if(characterCaseTab==='memory'){
