@@ -181,7 +181,7 @@ if (!app.includes("chunk_(keys,6)") || !app.includes("moduleBatches") || !app.in
 if (app.includes("for (const keys of groups)") || app.includes("['characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura'].map")) {
   throw new Error('Oversized legacy module batching returned.');
 }
-if (!app.includes("LIVE · UI:") || !app.includes("LIVE · CORE · HYDRATION ERROR") || !app.includes("LIVE · BRAK")) {
+if (!app.includes("LIVE · UI:") || !app.includes("LIVE · CZĘŚĆ DANYCH NIE DOCZYTAŁA SIĘ") || !app.includes("LIVE · BRAK")) {
   throw new Error('Deferred hydration failure must expose an explicit owner-facing state.');
 }
 
