@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.2.2'",
-  "styles.css?v=7.2.2",
-  "demo-data.js?v=7.2.2",
-  "app.js?v=7.2.2"
+  "const FRONTEND_VERSION = '7.3.0'",
+  "styles.css?v=7.3.0",
+  "demo-data.js?v=7.3.0",
+  "app.js?v=7.3.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -99,14 +99,20 @@ if (!app.includes('CASE COCKPIT · BIEŻĄCA SPRAWA') || !app.includes('data-cas
 if (!index.includes('leaflet@1.9.4') || !app.includes('const LOCATION_GEO_CACHE = {') || !app.includes("L.tileLayer('https://{s}.tile.openstreetmap.org/") || !css.includes('.case-real-map{')) {
   throw new Error('Hybrid verified geography map is missing.');
 }
-if (!app.includes('REAL MAP · tylko niezależnie zweryfikowane współrzędne') || !app.includes('fikcyjne i niejednoznaczne miejsca nie dostają zmyślonych pinezek')) {
-  throw new Error('Hybrid map no-fake-coordinate contract is missing.');
+for (const label of ['Zweryfikowane miejsce','Przybliżona lokalizacja','Znamy tylko region','Przestrzeń fabularna']) {
+  if (!app.includes(label)) throw new Error('Location Intelligence label missing: '+label);
+}
+if (!app.includes("status:'STORY-INFERRED APPROX'") || !app.includes("status:'REGION ONLY'") || !app.includes("L.circle(ll") || !app.includes("dashArray:'7 6'")) {
+  throw new Error('Approximate/region Location Intelligence rendering is missing.');
+}
+if (!app.includes('Mapa pokazuje pewność, nie udaje precyzji') || app.includes('REAL MAP · tylko niezależnie zweryfikowane współrzędne')) {
+  throw new Error('Map truthfulness contract is missing or legacy raw label returned.');
 }
 if (app.includes("'LOC-0003':{status:'REAL VERIFIED'") || app.includes("'LOC-0004':{status:'REAL VERIFIED'") || app.includes("'LOC-0005':{status:'REAL VERIFIED'")) {
   throw new Error('Regression: fictional / ambiguous Somerset story locations must not receive real-map coordinates.');
 }
-if (!app.includes('reader confusion memory') || !app.includes('Safe Disambiguator')) {
-  throw new Error('Reader Confusion Memory panel is missing from Case Cockpit.');
+if (!app.includes('najczęstsza pułapka pamięci') || !app.includes('Safe Disambiguator') || app.includes('reader confusion memory')) {
+  throw new Error('Owner-facing confusion panel must use human-readable microcopy.');
 }
 if (!app.includes('Tylko suche przyrosty bezpiecznych danych. Zero interpretacji fabuły.')) {
   throw new Error('Case Pulse spoiler-safe non-interpretation contract is missing.');
@@ -158,4 +164,15 @@ if (!app.includes('Najczęściej wspominane') || !app.includes("rowsForBook('cha
 if (!app.includes("'physician of':'lekarz'") || !app.includes("'assistant to':'asystent'") || !app.includes("'prospective client of':'ma umówione spotkanie z'")) {
   throw new Error('New p54 relation labels are not localized.');
 }
+
+if (!app.includes('humanCheckpoint_') || !app.includes('NO GEOCODING — INSUFFICIENT SAFE PRECISION')) {
+  throw new Error('Owner-tech cleanup or geo safety vocabulary is missing.');
+}
+if (!app.includes('locationVisualHtml_') || !css.includes('.case-location-visual{') || !app.includes("status:'PLACEHOLDER'")) {
+  throw new Error('Place visual graceful-degradation pipeline is missing.');
+}
+if (!app.includes("String(geo.status)==='REAL VERIFIED'") || !app.includes("String(x.geo?.status)==='STORY-INFERRED APPROX'")) {
+  throw new Error('Exact pin and approximate rendering paths are not semantically separated.');
+}
+
 console.log('Crime Cockpit frontend smoke: PASS');
