@@ -1255,7 +1255,9 @@
         }
       }
     } else if(characterCaseTab==='locations'){
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY</div><h3>${locations.length} miejsc</h3></div></div><div class="case-location-grid">${locations.map(r=>`<article class="case-location-card"><div class="case-location-pin">⌖</div><div><span>${esc(cell(r,'Location Role'))}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p></div></article>`).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
+      const cache=LOCATION_GEO_CACHE[String(bookId)]||{};
+      const verified=caseGeoRows_(bookId,locations);
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY · HYBRID VERIFIED GEOGRAPHY</div><h3>${locations.length} miejsc · ${verified.length} z prawdziwą pinezką</h3><p>Rzeczywiste miejsca trafiają na OpenStreetMap dopiero po niezależnej weryfikacji. Nazwy fikcyjne lub niejednoznaczne zostają w Story Space.</p></div><span class="status-pill good">NO FAKE COORDINATES</span></div><div class="case-real-map case-real-map-large" data-case-real-map></div><div class="case-location-grid">${locations.map(r=>{const id=String(cell(r,'Location ID')||''),g=cache[id];return `<article class="case-location-card ${g?'verified':''}"><div class="case-location-pin">⌖</div><div><span>${esc(g?'REAL MAP · '+g.precision:'STORY SPACE')}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p><small>${esc(cell(r,'Mention Count')||'—')} wzmianek · pierwsze p${esc(cell(r,'First Page')||'—')} · ostatnio p${esc(cell(r,'Last Page')||'—')}</small></div></article>`}).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
     } else if(characterCaseTab==='suspicions'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ŚCIANA PODEJRZEŃ</div><h3>Twoje hipotezy, nie werdykt systemu</h3></div><span class="status-pill warning">ASYSTENT NIE OCENIA WINY</span></div><div class="suspect-wall-ui">${walls.map(r=>`<article class="suspect-wall-card ${esc(String(cell(r,'Visual State')).toLowerCase())}">${portrait(cell(r,'Character ID'),cell(r,'Character'))}<div><span>${esc(cell(r,'Progress'))}</span><h4>${esc(cell(r,'Character'))}</h4><strong>${esc(cell(r,'Pin Type'))}</strong><p>${esc(cell(r,'Text'))}</p></div></article>`).join('')||'<div class="empty">Brak przypiętych hipotez.</div>'}</div>`;
     } else if(characterCaseTab==='memory'){
@@ -1294,7 +1296,7 @@
     $$('[data-cockpit-time-index]',stage).forEach(el=>el.addEventListener('click',()=>{casePlaybackIndex=Number(el.dataset.cockpitTimeIndex);characterCaseTab='time';renderCharacters();}));
     $$('[data-case-go]',stage).forEach(el=>el.addEventListener('click',()=>{characterCaseTab=el.dataset.caseGo||'cockpit';renderCharacters();}));
     $$('[data-character-sort]',stage).forEach(el=>el.addEventListener('change',()=>{characterSortMode=el.value||'mentions';renderCharacters();}));
-    if(characterCaseTab==='cockpit')initCaseGeoMap_(stage,bookId,locations);
+    if(characterCaseTab==='cockpit'||characterCaseTab==='locations')initCaseGeoMap_(stage,bookId,locations);
     $$('[data-lineup-answer]',stage).forEach(el=>el.addEventListener('click',()=>{
       if(witnessLineupState.answered)return;
       const prepared=ensureWitnessLineup_(bookId,dossiers,cast,smartCollisions);
