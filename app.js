@@ -697,6 +697,164 @@
     distractors.forEach(x=>{if(options.length<3)options.push(x);});
     return {target,paired:!!counterpart,options:lineupShuffle_(options,bookId+'|'+state.cycle+'|'+state.round+'|display'),clue:witnessLineupClue_(target)};
   }
+  function casePage_(value){
+    const m=String(value||'').match(/(?:^|[^\d])(\d{1,4})(?:[^\d]|$)/);
+    return m?Number(m[1]):0;
+  }
+  function caseTotalPages_(sync,currentPage=0){
+    const text=String(cell(sync||{},'Page Map')||'');
+    const range=text.match(/(\d+)\s*[–-]\s*(\d+)/);
+    if(range)return Number(range[2])||currentPage||0;
+    const nums=text.match(/\d+/g);
+    return nums&&nums.length?Number(nums[nums.length-1])||currentPage||0:currentPage||0;
+  }
+  function nextReadingMilestone_(page,total){
+    if(!page)return 0;
+    let next=Math.ceil((page+1)/25)*25;
+    if(next-page<10)next+=25;
+    return total?Math.min(next,total):next;
+  }
+  function readingStartDate_(bookId){
+    const notes=data.readingRoom.filter(x=>String(x.bookId||'')===String(bookId));
+    if(!notes.length)return '—';
+    const vals=notes.map(x=>String(x.timestamp||'').trim()).filter(Boolean).sort();
+    if(!vals.length)return '—';
+    const d=vals[0].match(/(\d{4})-(\d{2})-(\d{2})/);
+    return d?`${d[3]}.${d[2]}.${d[1]}`:vals[0].slice(0,10);
+  }
+  function safeSexHint_(entry){
+    const text=`${entry?.name||''} ${entry?.role||''} ${entry?.fact||''}`.toLowerCase();
+    const female=/\b(żona|matka|siostra|córka|narzeczona|wdowa|panna|pielęgniarka|lekarka|gospodyni|kobieta|dziewczyna)\b/i.test(text);
+    const male=/\b(mąż|ojciec|syn|brat|narzeczony|wdowiec|mężczyzna|ogrodnik|pastor|mechanik|asystent|sekretarz|inspektor|grabarz|dziedzic)\b/i.test(text);
+    return female&&!male?'F':male&&!female?'M':'U';
+  }
+  function safeCharacterEntry_(id,cast,dossiers){
+    const c=(cast||[]).find(r=>String(cell(r,'Character ID'))===String(id))||{};
+    const d=(dossiers||[]).find(r=>String(cell(r,'Character ID'))===String(id))||{};
+    return {
+      id:String(id||''),
+      name:String(cell(c,'Display Name')||cell(d,'Character')||cell(characterRegistryById(id)||{},'Canonical Name')||id||''),
+      role:String(cell(c,'Book Role')||cell(d,'Role')||'POSTAĆ'),
+      fact:String(cell(c,'Who is this?')||cell(d,'Safe Fact')||''),
+      tier:String(cell(c,'Cast Tier')||'')
+    };
+  }
+  function roleTokens_(entry){
+    const text=`${entry?.role||''} ${entry?.fact||''}`.toUpperCase();
+    const vocab=['PYE','BLAKISTON','REDWING','WHITEHEAD','SANDERLING','PÜND','MEDICAL','CLERGY','VILLAGE','FUNERAL','LONDON','FAMILY','RELATIONSHIP','STAFF','POLICE','ASSISTANT'];
+    return new Set(vocab.filter(t=>text.includes(t)));
+  }
+  function collisionReaderObserved_(r){
+    return /reader-observed|użytkownik jawnie|user_confusion_event/i.test(String(cell(r,'Notes')||cell(r,'Why Confusing')||''));
+  }
+  function surnameOf_(name){
+    const parts=String(name||'').trim().toLowerCase().replace(/[^\p{L}\s-]/gu,'').split(/\s+/).filter(Boolean);
+    return parts.length>1?parts[parts.length-1]:'';
+  }
+  function collisionEligible_(r,cast,dossiers){
+    if(collisionReaderObserved_(r))return true;
+    const a=safeCharacterEntry_(cell(r,'Character A ID'),cast,dossiers);
+    const b=safeCharacterEntry_(cell(r,'Character B ID'),cast,dossiers);
+    const sa=safeSexHint_(a), sb=safeSexHint_(b);
+    if(sa!=='U'&&sb!=='U'&&sa!==sb)return false;
+    const why=String(cell(r,'Why Confusing')||'').toLowerCase();
+    const sameSurname=surnameOf_(a.name)&&surnameOf_(a.name)===surnameOf_(b.name);
+    const ta=roleTokens_(a),tb=roleTokens_(b);
+    const roleOverlap=[...ta].filter(t=>tb.has(t)&&!['FAMILY','RELATIONSHIP'].includes(t)).length;
+    const roleCollision=roleOverlap>0||/\b(dwaj|dwie)\b.*\b(inspektor|lekar|pastor|grabar|detektyw|asystent)/i.test(why);
+    const relationOnly=/(małżeństwo|mąż|żona|matka|ojciec|syn|córka|rodzina|rodziny|brat|siostra|wspólnie prowadzą)/i.test(why)&&!sameSurname&&!roleCollision;
+    if(relationOnly)return false;
+    return sameSurname||roleCollision;
+  }
+  function smartCollisionRows_(rows,cast,dossiers){
+    return (rows||[]).filter(r=>collisionEligible_(r,cast,dossiers)).sort((a,b)=>{
+      const ao=collisionReaderObserved_(a)?1:0,bo=collisionReaderObserved_(b)?1:0;
+      return bo-ao+(numv(cell(b,'Score'))||0)-(numv(cell(a,'Score'))||0);
+    });
+  }
+  function collisionKind_(r,cast,dossiers){
+    if(collisionReaderObserved_(r))return 'READER-OBSERVED';
+    const a=safeCharacterEntry_(cell(r,'Character A ID'),cast,dossiers);
+    const b=safeCharacterEntry_(cell(r,'Character B ID'),cast,dossiers);
+    if(surnameOf_(a.name)&&surnameOf_(a.name)===surnameOf_(b.name))return 'WSPÓLNE NAZWISKO';
+    return 'PODOBNA ROLA / KONTEKST';
+  }
+  function traceMap_(bookId){
+    return new Map(rowsForBook('characterEncounterTrace',bookId).map(r=>[String(cell(r,'Character ID')),r]));
+  }
+  function sortedCast_(cast,bookId,mode=characterSortMode){
+    const traces=traceMap_(bookId);
+    const rows=[...(cast||[])];
+    const name=r=>String(cell(r,'Display Name')||'');
+    const metric=(r,key,def=0)=>{const v=numv(cell(traces.get(String(cell(r,'Character ID')))||{},key));return v==null?def:v;};
+    rows.sort((a,b)=>{
+      if(mode==='recent')return metric(b,'Last Page',-1)-metric(a,'Last Page',-1)||metric(b,'Mention Count',0)-metric(a,'Mention Count',0)||name(a).localeCompare(name(b),'pl');
+      if(mode==='first')return metric(a,'First Page',9999)-metric(b,'First Page',9999)||name(a).localeCompare(name(b),'pl');
+      if(mode==='alpha')return name(a).localeCompare(name(b),'pl');
+      return metric(b,'Mention Count',0)-metric(a,'Mention Count',0)||metric(b,'Last Page',-1)-metric(a,'Last Page',-1)||name(a).localeCompare(name(b),'pl');
+    });
+    return rows;
+  }
+  function characterSortSelect_(){
+    const opts=[['mentions','Najczęściej wspominane'],['recent','Ostatnio widziane'],['first','Pierwsze pojawienie'],['alpha','Alfabetycznie']];
+    return `<select class="cockpit-sort" data-character-sort aria-label="Sortowanie postaci">${opts.map(([v,l])=>`<option value="${v}" ${characterSortMode===v?'selected':''}>${l}</option>`).join('')}</select>`;
+  }
+  function lineupCandidateScore_(target,candidate){
+    if(!target||!candidate||target.id===candidate.id)return -9999;
+    const tg=safeSexHint_(target),cg=safeSexHint_(candidate);
+    if(tg!=='U'&&cg!=='U'&&tg!==cg)return -1000;
+    let score=0;
+    if(tg!=='U'&&tg===cg)score+=14;
+    const ts=surnameOf_(target.name),cs=surnameOf_(candidate.name);
+    if(ts&&ts===cs)score+=18;
+    const tt=roleTokens_(target),ct=roleTokens_(candidate);
+    [...tt].forEach(t=>{if(ct.has(t))score+=['PYE','BLAKISTON','REDWING','WHITEHEAD','SANDERLING','PÜND'].includes(t)?12:t==='FAMILY'?4:7;});
+    if(target.tier&&candidate.tier&&target.tier===candidate.tier)score+=3;
+    return score;
+  }
+  function smartWitnessRound_(bookId,state,roster,collisions){
+    if(!state||state.round<0||state.round>=state.order.length)return null;
+    const target=roster.find(x=>x.id===String(state.order[state.round]||''));
+    if(!target)return null;
+    const pair=(collisions||[]).find(r=>{
+      const a=String(cell(r,'Character A ID')||''),b=String(cell(r,'Character B ID')||'');
+      return a===target.id||b===target.id;
+    })||null;
+    const counterpartId=pair?(String(cell(pair,'Character A ID'))===target.id?String(cell(pair,'Character B ID')||''):String(cell(pair,'Character A ID')||'')):'';
+    const options=[target];
+    const counterpart=counterpartId?roster.find(x=>x.id===counterpartId):null;
+    if(counterpart)options.push(counterpart);
+    const rest=roster.filter(x=>!options.some(o=>o.id===x.id)).map(x=>({entry:x,score:lineupCandidateScore_(target,x),tie:lineupHash_(`${bookId}|${state.cycle}|${state.round}|${x.id}`)}))
+      .sort((a,b)=>b.score-a.score||a.tie-b.tie);
+    rest.forEach(x=>{if(options.length<3)options.push(x.entry);});
+    return {target,paired:!!counterpart,options:lineupShuffle_(options,bookId+'|'+state.cycle+'|'+state.round+'|semantic-display'),clue:witnessLineupClue_(target)};
+  }
+  function caseGeoRows_(bookId,locations){
+    const cache=LOCATION_GEO_CACHE[String(bookId)]||{};
+    return (locations||[]).map(r=>({row:r,geo:cache[String(cell(r,'Location ID'))]||null})).filter(x=>x.geo&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lng));
+  }
+  function initCaseGeoMap_(stage,bookId,locations){
+    const el=$('[data-case-real-map]',stage); if(!el)return;
+    if(stage._caseLeafletMap){try{stage._caseLeafletMap.remove();}catch(_err){} stage._caseLeafletMap=null;}
+    const verified=caseGeoRows_(bookId,locations);
+    if(!verified.length){el.innerHTML='<div class="case-map-fallback">Brak zweryfikowanych współrzędnych dla tej sprawy.</div>';return;}
+    if(!window.L){
+      el.innerHTML='<div class="case-map-fallback">Mapa bazowa nie załadowała się. Zweryfikowane miejsca pozostają dostępne na liście poniżej.</div>';
+      return;
+    }
+    const map=L.map(el,{zoomControl:true,scrollWheelZoom:false});
+    stage._caseLeafletMap=map;
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+    const bounds=[];
+    verified.forEach(({row,geo})=>{
+      const ll=[geo.lat,geo.lng];bounds.push(ll);
+      const mentions=cell(row,'Mention Count');
+      L.marker(ll).addTo(map).bindPopup(`<strong>${esc(cell(row,'Display Name'))}</strong><br><span>${esc(cell(row,'Who/what is this?')||'')}</span>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
+    });
+    if(bounds.length===1)map.setView(bounds[0],12); else map.fitBounds(bounds,{padding:[28,28],maxZoom:10});
+    setTimeout(()=>map.invalidateSize(),40);
+  }
+
   function renderCharacterCaseHub(){
     const hero=$('#characterCaseHero'), stage=$('#characterCaseStage'); if(!hero||!stage)return;
     const dossierBooks=[...new Set(moduleRows('caseFileDossiers').map(r=>String(cell(r,'Book ID'))).filter(Boolean))];
