@@ -998,6 +998,7 @@
   function renderCharacterCaseStage(stage,bookId,dossiers,cast){
     const rel=rowsForBook('relationGraphFeed',bookId).length?rowsForBook('relationGraphFeed',bookId):rowsForBook('characterRelations',bookId).filter(r=>boolv(cell(r,'Safe Now?')));
     const collisions=rowsForBook('visualCollisionBoard',bookId);
+    const smartCollisions=smartCollisionRows_(collisions,cast,dossiers);
     const locations=rowsForBook('bookLocations',bookId).filter(r=>boolv(cell(r,'Safe Now?')));
     const walls=rowsForBook('suspectWall',bookId);
     const pack=rowsForBook('reentryPackBuilder',bookId).filter(r=>String(cell(r,'Status')).toUpperCase()!=='RETIRED');
@@ -1008,23 +1009,20 @@
       const latestSnap=snaps[snaps.length-1]||{};
       const latestDelta=deltas.find(r=>String(cell(r,'To Snapshot'))===String(cell(latestSnap,'Snapshot ID')))||deltas[deltas.length-1]||{};
       const activePack=pack.filter(r=>String(cell(r,'Status')).toUpperCase()!=='RETIRED');
-      const focusIds=activePack.filter(r=>String(cell(r,'Item Type')).toUpperCase()==='CHARACTER').map(r=>String(cell(r,'Entity ID')||'')).filter(Boolean);
-      const uniqueFocus=[...new Set(focusIds)];
-      const fallbackIds=cast.map(r=>String(cell(r,'Character ID')||'')).filter(Boolean);
-      const selectedIds=[...uniqueFocus,...fallbackIds.filter(id=>!uniqueFocus.includes(id))].slice(0,6);
+      const sortedForCockpit=sortedCast_(cast,bookId,characterSortMode);
+      const selectedIds=sortedForCockpit.map(r=>String(cell(r,'Character ID')||'')).filter(Boolean).slice(0,6);
+      const traces=traceMap_(bookId);
       const focusCards=selectedIds.map(id=>{
         const d=dossiers.find(r=>String(cell(r,'Character ID'))===id)||{};
-        const c=cast.find(r=>String(cell(r,'Character ID'))===id)||{};
-        const name=cell(d,'Character')||cell(c,'Display Name')||cell(characterRegistryById(id)||{},'Canonical Name')||id;
-        const role=humanRole(cell(d,'Role')||cell(c,'Book Role')||'POSTAĆ');
-        return `<button class="cockpit-character" data-character-id="${esc(id)}">${portrait(id,name)}<span><strong>${esc(name)}</strong><small>${esc(role)}</small></span></button>`;
+        const cr=cast.find(r=>String(cell(r,'Character ID'))===id)||{};
+        const tr=traces.get(id)||{};
+        const name=cell(d,'Character')||cell(cr,'Display Name')||cell(characterRegistryById(id)||{},'Canonical Name')||id;
+        const role=humanRole(cell(d,'Role')||cell(cr,'Book Role')||'POSTAĆ');
+        const mentions=cell(tr,'Mention Count')||cell(cr,'Mention Count')||'—';
+        return `<button class="cockpit-character" data-character-id="${esc(id)}">${portrait(id,name)}<span><strong>${esc(name)}</strong><small>${esc(role)} · ${esc(mentions)} wzm.</small></span></button>`;
       }).join('');
 
-      const rankedCollisions=[...collisions].sort((a,b)=>{
-        const ar=/reader-observed|użytkownik jawnie/i.test(String(cell(a,'Notes')||cell(a,'Why Confusing')||''))?1:0;
-        const br=/reader-observed|użytkownik jawnie/i.test(String(cell(b,'Notes')||cell(b,'Why Confusing')||''))?1:0;
-        return br-ar+(numv(cell(b,'Score'))||0)-(numv(cell(a,'Score'))||0);
-      });
+      const rankedCollisions=smartCollisions;
       const collision=rankedCollisions[0]||null;
       const confusion=collision?`<div class="cockpit-confusion-pair">
         <button data-character-id="${esc(cell(collision,'Character A ID'))}">${portrait(cell(collision,'Character A ID'),cell(collision,'Character A'))}<strong>${esc(cell(collision,'Character A'))}</strong></button>
