@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.2.1';
+  const FRONTEND_VERSION = '7.2.2';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID'},
@@ -227,7 +227,7 @@
     const message=String(originalError?.message||originalError||'UNKNOWN');
     try {
       const ping=await jsonp(state.apiUrl,state.token,{scope:'ping'},6000);
-      if(ping?.ok) return {label:'API OK · CORE ERROR · DEMO',detail:message};
+      if(ping?.ok) return {label:'API OK · CORE REQUEST ERROR · DEMO',detail:message};
       const err=String(ping?.error||'BACKEND_ERROR');
       if(err==='UNAUTHORIZED') return {label:'TOKEN · DEMO',detail:'Token nie pasuje do CRIME_COCKPIT_TOKEN.'};
       if(err.includes('BACKEND_NOT_CONFIGURED')) return {label:'API CONFIG · DEMO',detail:err};
@@ -279,27 +279,42 @@
 
   async function loadData(showToast=true) {
     $('#refreshBtn').textContent = '…';
+    let phase='bootstrap';
     try {
       if (state.apiUrl && state.token) {
+        phase='core-request';
         const payload=requireOk(await jsonp(state.apiUrl,state.token,{scope:'core'},22000));
+        phase='live-render';
         data = normalizeData(payload);
         setSourceBadge('LIVE · CORE','good');
         renderAll();
         if(showToast) toast('Rdzeń LIVE gotowy · doczytuję moduły');
+        phase='deferred-load';
         loadDeferredLiveData(false);
       } else {
+        phase='demo-render';
         data = normalizeData(window.CRIME_COCKPIT_DEMO || {});
         setSourceBadge('DEMO','muted');
         renderAll();
         if(showToast) toast('Snapshot demonstracyjny gotowy');
       }
     } catch (err) {
-      console.error(err);
-      const diagnosis = state.apiUrl && state.token ? await diagnoseLiveFailure(err) : {label:'DEMO',detail:''};
+      console.error('Crime Cockpit load failed', {phase, error:err});
+      const liveRenderError = phase==='live-render';
+      const diagnosis = liveRenderError
+        ? {label:'API OK · UI ERROR · DEMO',detail:String(err?.message||err||'FRONTEND_RENDER_ERROR')}
+        : (state.apiUrl && state.token ? await diagnoseLiveFailure(err) : {label:'DEMO',detail:String(err?.message||err||'')});
       data = normalizeData(window.CRIME_COCKPIT_DEMO || {});
       setSourceBadge(diagnosis.label,'warning');
-      renderAll();
-      if(showToast) toast(`LIVE niedostępne · ${diagnosis.detail||'pokazuję demo'}`);
+      try {
+        renderAll();
+      } catch (fallbackErr) {
+        console.error('Crime Cockpit fallback render failed', fallbackErr);
+        setSourceBadge('UI ERROR','warning');
+      }
+      if(showToast) toast(liveRenderError
+        ? `API LIVE działa, ale frontend ma błąd · ${diagnosis.detail}`
+        : `LIVE niedostępne · ${diagnosis.detail||'pokazuję demo'}`);
     } finally {
       $('#refreshBtn').textContent = '↻';
     }
