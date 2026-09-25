@@ -1911,7 +1911,7 @@
       return `<section class="reading-book-group" data-book-id="${esc(group.bookId)}"><button type="button" class="reading-book-head" data-room-book="${esc(group.bookId)}">${coverHtml(book,'small')}<span><span class="section-kicker">AKTA LEKTURY · ${group.notes.length} ${group.notes.length===1?'NOTATKA':'NOTATEK'}</span><strong>${esc(group.title)}</strong><small>${esc(book.author||'')}</small></span><i>Otwórz dossier →</i></button><div class="timeline">${group.notes.map(x=>`<article class="note-card"><div class="note-meta"><span>${esc(x.timestamp||'')}</span><span>${esc(x.progress||'')}</span><span>${esc(humanNoteType(x.type))}</span><span class="note-book-tag">${esc(x.title||group.title)}</span></div><blockquote>${esc(x.note||'')}</blockquote>${x.context?`<div class="assistant-context">${esc(x.context)}</div>`:''}<p class="expert-only small-note">Model: ${esc(x.modelUse||'HOLD UNTIL DEBRIEF')} · ${esc(x.status||'')}</p></article>`).join('')}</div></section>`;
     }).join('')||`<div class="empty">Brak notatek w Klubie lekturowym.</div>`;
     renderReadingArcade();
-    $('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
+    $$('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
     hydrateCovers($('#readingRoomList'));
   }
   function humanNoteType(t){ return ({HYPOTHESIS:'teoria',CHARACTER:'postać',ATMOSPHERE:'atmosfera',PACE:'tempo',CONSTRUCTION:'konstrukcja',QUESTION:'pytanie',EMOTION:'reakcja',CLUE:'trop',OTHER:'notatka'})[t]||t||'notatka'; }
