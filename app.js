@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.4.0';
+  const FRONTEND_VERSION = '7.5.0';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -1734,6 +1734,65 @@
     renderEnrichmentFieldRoi();
   }
 
+  function readingArcadeSnapshot_(){
+    const currentId=String(data.current?.id||'');
+    const currentTitle=String(data.current?.title||'');
+    const notes=safeArray(data.readingRoom).filter(n=>currentId ? String(n.bookId||'')===currentId : String(n.title||'')===currentTitle);
+    const countType=t=>notes.filter(n=>String(n.type||'').toUpperCase()===t).length;
+    const theoryNotes=notes.filter(n=>['HYPOTHESIS','CONSTRUCTION'].includes(String(n.type||'').toUpperCase()));
+    const theoryCheckpoints=new Set(theoryNotes.map(n=>String(n.progress||'').trim()).filter(Boolean)).size;
+    const corrections=notes.filter(n=>/korekt|pomyli|skorygow|doprecyz|nie siostr/i.test(`${n.note||''} ${n.context||''}`)).length;
+    const questions=countType('QUESTION');
+    const emotions=countType('EMOTION');
+    const characters=countType('CHARACTER');
+    const constructions=countType('CONSTRUCTION');
+    const hypotheses=countType('HYPOTHESIS');
+    const xp=notes.length*5 + theoryNotes.length*15 + questions*10 + constructions*12 + corrections*8 + emotions*5 + characters*5;
+    const level=xp>=180?'Architekt sprawy':xp>=120?'Inspektor':xp>=70?'Tropiciel':'Obserwator';
+    const badges=[
+      {name:'Łowca hipotez',on:theoryNotes.length>=3,why:'co najmniej 3 zapisane teorie'},
+      {name:'Kartotekarz relacji',on:questions>=1||corrections>=1,why:'pytanie albo poprawiona relacja'},
+      {name:'Architekt zagadki',on:constructions>=1,why:'przewidywanie dotyczące konstrukcji książki'},
+      {name:'Czytelnik emocji',on:emotions>=1,why:'jawnie zapisana reakcja na lekturę'},
+      {name:'Wielowątkowy',on:theoryCheckpoints>=3,why:'teorie rozwijane na co najmniej 3 etapach'}
+    ];
+    const bingo=[
+      ['Pierwsza teoria',theoryNotes.length>=1],
+      ['Dwie teorie',theoryNotes.length>=2],
+      ['Cztery teorie',theoryNotes.length>=4],
+      ['Pytanie do kartoteki',questions>=1],
+      ['Pomyłka naprawiona',corrections>=1],
+      ['Meta-zagadka',constructions>=1],
+      ['Emocja na stole',emotions>=1],
+      ['Postać na radarze',characters>=1],
+      ['Teorie przez 3 etapy',theoryCheckpoints>=3]
+    ];
+    const latestEmotion=[...notes].reverse().find(n=>String(n.type||'').toUpperCase()==='EMOTION')||null;
+    return {notes,theoryNotes,theoryCheckpoints,corrections,questions,emotions,characters,constructions,hypotheses,xp,level,badges,bingo,latestEmotion};
+  }
+
+  function renderReadingArcade(){
+    const passport=$('#readingArcadePassport'), bingoRoot=$('#readingArcadeBingo'), vault=$('#readingArcadeVault'), signal=$('#readingArcadeSignal');
+    if(!passport||!bingoRoot||!vault||!signal) return;
+    const a=readingArcadeSnapshot_();
+    passport.innerHTML=[
+      ['Notatki',a.notes.length,'wszystkie zapisane reakcje'],
+      ['Teorie',a.theoryNotes.length,'hipotezy + meta-przewidywania'],
+      ['Checkpointy teorii',a.theoryCheckpoints,'różne etapy lektury'],
+      ['Detektywistyczne XP',a.xp,a.level]
+    ].map(([l,v,d])=>`<div class="metric-card arcade-metric"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('');
+    const activeBadges=a.badges.filter(b=>b.on);
+    passport.insertAdjacentHTML('afterend',`<div class="sleuth-badges">${a.badges.map(b=>`<span class="sleuth-badge ${b.on?'active':''}" title="${esc(b.why)}">${b.on?'◆':'◇'} ${esc(b.name)}</span>`).join('')}</div>`);
+
+    const done=a.bingo.filter(([,on])=>on).length;
+    bingoRoot.innerHTML=`<div class="bingo-score"><strong>${done}/9</strong><span>${done===9?'BINGO!':'odhaczone'}</span></div><div class="bingo-grid">${a.bingo.map(([label,on])=>`<div class="bingo-cell ${on?'done':''}"><span>${on?'✓':'·'}</span><strong>${esc(label)}</strong></div>`).join('')}</div><p class="small-note">Liczymy aktywność detektywistyczną, nie trafność. Zero nagrody za zgadywanie sprawcy przed końcem.</p>`;
+
+    vault.innerHTML=a.theoryNotes.length?a.theoryNotes.slice().reverse().map(n=>`<article class="theory-vault-card"><div><span class="section-kicker">${String(n.type||'').toUpperCase()==='CONSTRUCTION'?'META':'TEORIA'} · ${esc(n.progress||'bez checkpointu')}</span><strong>SEALED</strong></div><p>${esc(n.note||'')}</p></article>`).join(''):`<div class="empty">Sejf teorii jest jeszcze pusty.</div>`;
+
+    const mood=a.latestEmotion;
+    signal.innerHTML=`<div><div class="section-kicker">PASZPORT DETEKTYWA</div><h3>${esc(a.level)}</h3><p>${activeBadges.length?esc(activeBadges.map(b=>b.name).join(' · ')):'Profil dopiero się rozkręca.'}</p></div>${mood?`<blockquote><span>OSTATNIA JAWNA REAKCJA · ${esc(mood.progress||'')}</span>${esc(mood.note||'')}</blockquote>`:`<div class="empty">Jeszcze nie ma jawnej notatki typu „reakcja”.</div>`}`;
+  }
+
   function renderReadingRoom(){
     const filterEl=$('#readingRoomBookFilter');
     const allNotes=[...data.readingRoom].reverse();
@@ -1765,7 +1824,8 @@
       const book=bookById(group.bookId)||{id:group.bookId,title:group.title,author:'',coverUrl:'',coverSource:''};
       return `<section class="reading-book-group" data-book-id="${esc(group.bookId)}"><button type="button" class="reading-book-head" data-room-book="${esc(group.bookId)}">${coverHtml(book,'small')}<span><span class="section-kicker">AKTA LEKTURY · ${group.notes.length} ${group.notes.length===1?'NOTATKA':'NOTATEK'}</span><strong>${esc(group.title)}</strong><small>${esc(book.author||'')}</small></span><i>Otwórz dossier →</i></button><div class="timeline">${group.notes.map(x=>`<article class="note-card"><div class="note-meta"><span>${esc(x.timestamp||'')}</span><span>${esc(x.progress||'')}</span><span>${esc(humanNoteType(x.type))}</span><span class="note-book-tag">${esc(x.title||group.title)}</span></div><blockquote>${esc(x.note||'')}</blockquote>${x.context?`<div class="assistant-context">${esc(x.context)}</div>`:''}<p class="expert-only small-note">Model: ${esc(x.modelUse||'HOLD UNTIL DEBRIEF')} · ${esc(x.status||'')}</p></article>`).join('')}</div></section>`;
     }).join('')||`<div class="empty">Brak notatek w Klubie lekturowym.</div>`;
-    $$('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
+    renderReadingArcade();
+    $('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
     hydrateCovers($('#readingRoomList'));
   }
   function humanNoteType(t){ return ({HYPOTHESIS:'teoria',CHARACTER:'postać',ATMOSPHERE:'atmosfera',PACE:'tempo',CONSTRUCTION:'konstrukcja',QUESTION:'pytanie',EMOTION:'reakcja',CLUE:'trop',OTHER:'notatka'})[t]||t||'notatka'; }
