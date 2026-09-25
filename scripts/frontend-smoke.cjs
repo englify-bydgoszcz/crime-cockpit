@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.7'",
-  "styles.css?v=7.3.7",
-  "demo-data.js?v=7.3.7",
-  "app.js?v=7.3.7"
+  "const FRONTEND_VERSION = '7.3.8'",
+  "styles.css?v=7.3.8",
+  "demo-data.js?v=7.3.8",
+  "app.js?v=7.3.8"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -229,8 +229,11 @@ const placeVisuals = [
 for (const file of placeVisuals) {
   if (!app.includes('assets/locations/bk00002/'+file)) throw new Error('Place visual cache missing: '+file);
 }
-if (!app.includes("status:'REAL VISUAL'") || !app.includes("status:'CONCEPT VISUAL'") || !app.includes("assets\\/locations\\/")) {
-  throw new Error('Place visual status/path contract missing.');
+if (!app.includes("status:'PHOTOREAL REAL VISUAL'") || !app.includes("status:'PHOTOREAL CONCEPT VISUAL'") || !app.includes("assets\\/locations\\/")) {
+  throw new Error('Photoreal place visual status/path contract missing.');
+}
+if (app.includes('stylized place visual') || app.includes('Stylizowana wizualizacja miejsca')) {
+  throw new Error('Legacy stylized place-art wording must not ship in v7.3.8.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
