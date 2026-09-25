@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.1.0'",
-  "styles.css?v=7.1.0",
-  "demo-data.js?v=7.1.0",
-  "app.js?v=7.1.0"
+  "const FRONTEND_VERSION = '7.2.0'",
+  "styles.css?v=7.2.0",
+  "demo-data.js?v=7.2.0",
+  "app.js?v=7.2.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -96,8 +96,14 @@ if (!app.includes("characterCaseTab = 'cockpit'") || !index.includes('data-chara
 if (!app.includes('CASE COCKPIT · BIEŻĄCA SPRAWA') || !app.includes('data-case-go=') || !css.includes('.case-cockpit-grid{')) {
   throw new Error('Case Cockpit composition or drill-down wiring is missing.');
 }
-if (!app.includes('story-space · bez fałszywej geolokalizacji') || !app.includes('Schemat pamięciowy, nie mapa odległości.') || !css.includes('.story-map-canvas{')) {
-  throw new Error('Story Map must remain explicitly schematic and non-geocoded.');
+if (!index.includes('leaflet@1.9.4') || !app.includes('const LOCATION_GEO_CACHE = {') || !app.includes("L.tileLayer('https://{s}.tile.openstreetmap.org/") || !css.includes('.case-real-map{')) {
+  throw new Error('Hybrid verified geography map is missing.');
+}
+if (!app.includes('REAL MAP · tylko niezależnie zweryfikowane współrzędne') || !app.includes('fikcyjne i niejednoznaczne miejsca nie dostają zmyślonych pinezek')) {
+  throw new Error('Hybrid map no-fake-coordinate contract is missing.');
+}
+if (app.includes("'LOC-0003':{status:'REAL VERIFIED'") || app.includes("'LOC-0004':{status:'REAL VERIFIED'") || app.includes("'LOC-0005':{status:'REAL VERIFIED'")) {
+  throw new Error('Regression: fictional / ambiguous Somerset story locations must not receive real-map coordinates.');
 }
 if (!app.includes('reader confusion memory') || !app.includes('Safe Disambiguator')) {
   throw new Error('Reader Confusion Memory panel is missing from Case Cockpit.');
@@ -119,6 +125,24 @@ if (app.includes("storage.set('witnessLineup") || app.includes('storage.set("wit
 }
 if (!app.includes("if(!witnessLineupState.misses.includes(round.target.id))") || !app.includes('DO SZYBKIEGO PRZYPOMNIENIA')) {
   throw new Error('Witness Line-Up review loop is missing.');
+}
+if (!app.includes('POSTĘP LEKTURY') || !app.includes('caseTotalPages_') || !app.includes('miękki cel, nie obowiązek') || !css.includes('.reading-progress-track{')) {
+  throw new Error('Reading Progress / soft milestone surface is missing.');
+}
+if (!app.includes('TIMELINE LEKTURY') || !app.includes('reading-dot-line') || !app.includes('data-cockpit-time-index=') || !css.includes('.reading-checkpoint.current>i{')) {
+  throw new Error('Immersive dotted reading timeline or checkpoint deep-links are missing.');
+}
+if (!app.includes('OSTATNIE AKTUALIZACJE') || !app.includes('recentUpdatesHtml') || !css.includes('.case-update-strip{')) {
+  throw new Error('Recent character/location updates rail is missing.');
+}
+if (!app.includes('smartCollisionRows_') || !app.includes('safeSexHint_') || !app.includes('RELACJA ≠ POMYŁKA') || !app.includes('Samo pokrewieństwo lub małżeństwo nie wystarcza.')) {
+  throw new Error('Smart Nie pomyl eligibility filter is missing.');
+}
+if (!app.includes('lineupCandidateScore_') || !app.includes('smartWitnessRound_') || !app.includes("if(tg!=='U'&&cg!=='U'&&tg!==cg)return -1000")) {
+  throw new Error('Witness Line-Up semantic distractor matching is missing.');
+}
+if (!app.includes('Najczęściej wspominane') || !app.includes("rowsForBook('characterEncounterTrace',bookId)") || !app.includes('data-character-sort') || !app.includes('liczba bezpiecznych wzmianek do aktualnej strony')) {
+  throw new Error('Character mention-count ordering / sort controls are missing.');
 }
 if (!app.includes("'physician of':'lekarz'") || !app.includes("'assistant to':'asystent'") || !app.includes("'prospective client of':'ma umówione spotkanie z'")) {
   throw new Error('New p54 relation labels are not localized.');
