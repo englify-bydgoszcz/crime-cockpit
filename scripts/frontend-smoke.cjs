@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.2.1'",
-  "styles.css?v=7.2.1",
-  "demo-data.js?v=7.2.1",
-  "app.js?v=7.2.1"
+  "const FRONTEND_VERSION = '7.2.2'",
+  "styles.css?v=7.2.2",
+  "demo-data.js?v=7.2.2",
+  "app.js?v=7.2.2"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -136,6 +136,12 @@ const framesDecl=app.indexOf("const frames=playback.filter(r=>String(cell(r,'Boo
 const checkpointUse=app.indexOf("const checkpointMarkers=frames.map");
 if (framesDecl < 0 || checkpointUse < 0 || framesDecl > checkpointUse) {
   throw new Error('Runtime regression: reading timeline uses frames before initialization.');
+}
+if (!app.includes("let phase='bootstrap';") || !app.includes("phase='core-request';") || !app.includes("phase='live-render';") || !app.includes("API OK · UI ERROR · DEMO")) {
+  throw new Error('Live loading must distinguish API core failures from frontend render failures.');
+}
+if (!app.includes("API OK · CORE REQUEST ERROR · DEMO") || app.includes("API OK · CORE ERROR · DEMO")) {
+  throw new Error('Misleading generic CORE ERROR diagnosis must not return.');
 }
 if (!app.includes('OSTATNIE AKTUALIZACJE') || !app.includes('recentUpdatesHtml') || !css.includes('.case-update-strip{')) {
   throw new Error('Recent character/location updates rail is missing.');
