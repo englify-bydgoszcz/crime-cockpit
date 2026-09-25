@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.5.0'",
-  "styles.css?v=7.5.0",
-  "demo-data.js?v=7.5.0",
-  "app.js?v=7.5.0"
+  "const FRONTEND_VERSION = '7.5.1'",
+  "styles.css?v=7.5.1",
+  "demo-data.js?v=7.5.1",
+  "app.js?v=7.5.1"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -260,6 +260,19 @@ if (!app.includes('Liczymy aktywność detektywistyczną, nie trafność') || !a
 }
 if (!css.includes('.bingo-grid{') || !css.includes('.theory-vault-card{')) {
   throw new Error('Reading Arcade styling is missing.');
+}
+
+if (!app.includes("CORE_SESSION_CACHE_KEY = 'crimeCockpitCoreSessionV1'") || !app.includes('fetchCoreWithRecovery_()') || !app.includes('scheduleBackgroundCoreRetry_()')) {
+  throw new Error('Core recovery/cache contract is missing.');
+}
+if (!app.includes("attempts=[22000,35000]") || !app.includes("OSTATNI LIVE · PONAWIAM") || !app.includes("API CHWILOWO NIEDOSTĘPNE · DEMO")) {
+  throw new Error('Owner-facing core recovery states are missing.');
+}
+if (!app.includes('window.sessionStorage.setItem(CORE_SESSION_CACHE_KEY') || app.includes('localStorage.setItem(CORE_SESSION_CACHE_KEY')) {
+  throw new Error('Core fallback cache must remain session-scoped.');
+}
+if (!app.includes('backgroundCoreRetryCount>=3')) {
+  throw new Error('Background core retry must be bounded.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
