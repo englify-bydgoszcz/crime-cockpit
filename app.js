@@ -1008,6 +1008,14 @@
     if(characterCaseTab==='cockpit'){
       const latestSnap=snaps[snaps.length-1]||{};
       const latestDelta=deltas.find(r=>String(cell(r,'To Snapshot'))===String(cell(latestSnap,'Snapshot ID')))||deltas[deltas.length-1]||{};
+      const sync=rowsForBook('characterProgressSync',bookId)[0]||{};
+      const currentPage=casePage_(cell(latestSnap,'Progress')||cell(sync,'Applied Progress')||cell(scene||{},'Progress'));
+      const totalPages=caseTotalPages_(sync,currentPage);
+      const progressPct=totalPages?Math.min(100,Math.round((currentPage/totalPages)*100)):0;
+      const nextGoal=nextReadingMilestone_(currentPage,totalPages);
+      const previousSnap=latestDelta?snaps.find(r=>String(cell(r,'Snapshot ID'))===String(cell(latestDelta,'From Snapshot'))):null;
+      const previousPage=casePage_(cell(previousSnap||{},'Progress'));
+      const startDate=readingStartDate_(bookId);
       const activePack=pack.filter(r=>String(cell(r,'Status')).toUpperCase()!=='RETIRED');
       const sortedForCockpit=sortedCast_(cast,bookId,characterSortMode);
       const selectedIds=sortedForCockpit.map(r=>String(cell(r,'Character ID')||'')).filter(Boolean).slice(0,6);
@@ -1024,12 +1032,16 @@
 
       const rankedCollisions=smartCollisions;
       const collision=rankedCollisions[0]||null;
-      const confusion=collision?`<div class="cockpit-confusion-pair">
-        <button data-character-id="${esc(cell(collision,'Character A ID'))}">${portrait(cell(collision,'Character A ID'),cell(collision,'Character A'))}<strong>${esc(cell(collision,'Character A'))}</strong></button>
-        <span class="cockpit-not-equal">≠</span>
-        <button data-character-id="${esc(cell(collision,'Character B ID'))}">${portrait(cell(collision,'Character B ID'),cell(collision,'Character B'))}<strong>${esc(cell(collision,'Character B'))}</strong></button>
-        <p>${esc(cell(collision,'Safe Disambiguator'))}</p>
-      </div>`:`<div class="empty">Brak aktywnej pary do rozróżnienia.</div>`;
+      const confusion=collision?(()=>{
+        const aid=String(cell(collision,'Character A ID')||''),bid=String(cell(collision,'Character B ID')||'');
+        const at=traces.get(aid)||{},bt=traces.get(bid)||{};
+        return `<div class="cockpit-confusion-pair">
+          <button data-character-id="${esc(aid)}">${portrait(aid,cell(collision,'Character A'))}<strong>${esc(cell(collision,'Character A'))}</strong><small>${esc(cell(at,'Mention Count')||'—')} wzm. · ostatnio p${esc(cell(at,'Last Page')||'—')}</small></button>
+          <span class="cockpit-not-equal">≠</span>
+          <button data-character-id="${esc(bid)}">${portrait(bid,cell(collision,'Character B'))}<strong>${esc(cell(collision,'Character B'))}</strong><small>${esc(cell(bt,'Mention Count')||'—')} wzm. · ostatnio p${esc(cell(bt,'Last Page')||'—')}</small></button>
+          <div class="cockpit-confusion-copy"><span>${esc(collisionKind_(collision,cast,dossiers))}</span><p>${esc(cell(collision,'Why Confusing')||'')}</p><strong>${esc(cell(collision,'Safe Disambiguator'))}</strong></div>
+        </div>`;
+      })():`<div class="empty">Brak sensownej aktywnej pary do rozróżnienia.</div>`;
       const lineupPreview=selectedIds.slice(0,3).map(id=>{
         const d=dossiers.find(r=>String(cell(r,'Character ID'))===id)||{};
         const cr=cast.find(r=>String(cell(r,'Character ID'))===id)||{};
@@ -1050,6 +1062,35 @@
 
       const theories=activePack.filter(r=>['THEORY','SUSPICION'].includes(String(cell(r,'Item Type')).toUpperCase())).slice(0,4);
       const theoryHtml=theories.map(r=>`<article class="cockpit-note"><span>${esc(cell(r,'Memory Cue')||'TWOJA TEORIA')}</span><strong>${esc(cell(r,'Label'))}</strong><p>${esc(cell(r,'Safe Fact'))}</p></article>`).join('')||'<div class="empty">Brak aktywnych teorii w pakiecie pamięci.</div>';
+      const recentCharacters=rowsForBook('characterEncounterTrace',bookId).map(tr=>{
+        const page=numv(cell(tr,'First Page'))||0;
+        if(page<=previousPage||page>currentPage)return null;
+        const id=String(cell(tr,'Character ID')||'');
+        const cr=cast.find(r=>String(cell(r,'Character ID'))===id)||{};
+        return {type:'CHARACTER',page,id,name:cell(cr,'Display Name')||cell(tr,'Character')||id,subtitle:humanRole(cell(cr,'Book Role')||'POSTAĆ'),mentions:cell(tr,'Mention Count')||''};
+      }).filter(Boolean);
+      const recentLocations=locations.map(r=>{
+        const page=numv(cell(r,'First Page'))||0;
+        if(page<=previousPage||page>currentPage)return null;
+        return {type:'LOCATION',page,id:String(cell(r,'Location ID')||''),name:cell(r,'Display Name'),subtitle:cell(r,'Location Role')||'MIEJSCE',mentions:cell(r,'Mention Count')||''};
+      }).filter(Boolean);
+      const recentItems=[...recentCharacters,...recentLocations].sort((a,b)=>b.page-a.page||(b.type==='CHARACTER'?1:-1)).slice(0,6);
+      const recentUpdatesHtml=recentItems.map(item=>{
+        if(item.type==='CHARACTER')return `<button class="case-update-card" data-character-id="${esc(item.id)}"><div class="case-update-visual">${portrait(item.id,item.name)}</div><div><span>NOWA POSTAĆ</span><strong>${esc(item.name)}</strong><small>${esc(item.subtitle)}</small><em>p${esc(item.page)} · ${esc(item.mentions)} wzm.</em></div></button>`;
+        const verified=!!((LOCATION_GEO_CACHE[String(bookId)]||{})[item.id]);
+        return `<button class="case-update-card" data-case-go="locations"><div class="case-update-location ${verified?'verified':''}"><i>⌖</i><small>${verified?'REAL MAP':'STORY'}</small></div><div><span>NOWA LOKALIZACJA</span><strong>${esc(item.name)}</strong><small>${esc(item.subtitle)}</small><em>p${esc(item.page)} · ${esc(item.mentions)} wzm.</em></div></button>`;
+      }).join('')||'<div class="empty">Brak nowych postaci lub miejsc od poprzedniego checkpointu.</div>';
+      const dotCount=totalPages?Math.min(96,Math.max(64,Math.round(totalPages/6))):64;
+      const readRatio=totalPages?Math.min(1,currentPage/totalPages):0;
+      const readingDots=Array.from({length:dotCount},(_,i)=>{const ratio=i/(dotCount-1);return `<i class="${ratio<=readRatio?'read':'future'}"></i>`;}).join('');
+      const checkpointMarkers=frames.map((r,i)=>{const p=casePage_(cell(r,'Progress'));if(!p||!totalPages)return '';const left=Math.max(0,Math.min(100,p/totalPages*100));const current=i===frames.length-1;return `<button class="reading-checkpoint ${current?'current':''}" style="left:${left}%" data-cockpit-time-index="${i}" title="Checkpoint p${esc(p)}"><i></i><strong>p${esc(p)}</strong>${current?'<small>Obecnie</small>':''}</button>`;}).join('');
+      const milestonePages=totalPages?[1,...Array.from({length:Math.floor(totalPages/50)},(_,i)=>(i+1)*50).filter(p=>p<totalPages),totalPages]:[];
+      const milestoneLabels=milestonePages.map(p=>`<span style="left:${Math.max(0,Math.min(100,p/totalPages*100))}%">${p===1?'1':'p'+p}</span>`).join('');
+      const goalLeft=totalPages&&nextGoal?Math.max(0,Math.min(100,nextGoal/totalPages*100)):0;
+      const verifiedGeo=caseGeoRows_(bookId,locations);
+      const geoCache=LOCATION_GEO_CACHE[String(bookId)]||{};
+      const storyOnly=locations.filter(r=>!geoCache[String(cell(r,'Location ID'))]);
+      const storyOnlyHtml=storyOnly.map(r=>`<span>${esc(cell(r,'Display Name'))}</span>`).join('');
 
       const frames=playback.filter(r=>String(cell(r,'Book ID'))===String(bookId));
       const latestPage=Math.max(1,...frames.map(r=>parseInt(String(cell(r,'Progress')||'').match(/\d+/)?.[0]||'0',10)));
