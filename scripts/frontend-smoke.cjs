@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.6'",
-  "styles.css?v=7.3.6",
-  "demo-data.js?v=7.3.6",
-  "app.js?v=7.3.6"
+  "const FRONTEND_VERSION = '7.3.7'",
+  "styles.css?v=7.3.7",
+  "demo-data.js?v=7.3.7",
+  "app.js?v=7.3.7"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -218,4 +218,19 @@ if (!css.includes(".case-schematic-map") || !css.includes(".case-location-highli
 if (!app.includes("status:'STORY-INFERRED APPROX',lat:51.345786") || !app.includes("status:'STORY-INFERRED APPROX',lat:51.499720") || !app.includes("status:'REGION ONLY',lat:51.381389") || !app.includes("map-cluster-popup")) throw new Error('Soft geography expansion missing.');
 if (!app.includes("'REAL VERIFIED','STORY-INFERRED APPROX','REGION ONLY'")) throw new Error('Region-only map rendering missing.');
 if (!css.includes(".case-map-region-area") || !css.includes(".map-cluster-popup")) throw new Error('Soft geography CSS missing.');
+const placeVisuals = [
+  'LOC-0001__Crouch_End.png','LOC-0002__London.png','LOC-0003__Saxby_on_Avon.png','LOC-0004__Pye_Hall.png',
+  'LOC-0005__Dingle_Dell.png','LOC-0006__St_Botolph.png','LOC-0007__Queens_Arms.png','LOC-0008__Bath.png',
+  'LOC-0009__Hastings.png','LOC-0010__Lower_Westwood.png','LOC-0011__Royal_United_Hospital.png','LOC-0012__River_Avon.png',
+  'LOC-0019__Trowbridge.png','LOC-0020__Ferryman.png','LOC-0021__Harley_Street.png','LOC-0022__Charterhouse_Square.png',
+  'LOC-0023__Tanner_Court.png','LOC-0024__Boscombe_Down.png','LOC-0025__Carlottas.png','LOC-0026__Kings_Abbott.png',
+  'LOC-0027__Ashton_House.png','LOC-0028__Brick_Lane.png'
+];
+for (const file of placeVisuals) {
+  if (!app.includes('assets/locations/bk00002/'+file)) throw new Error('Place visual cache missing: '+file);
+}
+if (!app.includes("status:'REAL VISUAL'") || !app.includes("status:'CONCEPT VISUAL'") || !app.includes("assets\\/locations\\/")) {
+  throw new Error('Place visual status/path contract missing.');
+}
+
 console.log('Crime Cockpit frontend smoke: PASS');
