@@ -102,7 +102,7 @@ if (!index.includes('leaflet@1.9.4') || !app.includes('const LOCATION_GEO_CACHE 
 for (const label of ['Zweryfikowane miejsce','Przybliżona lokalizacja','Znamy tylko region','Przestrzeń fabularna']) {
   if (!app.includes(label)) throw new Error('Location Intelligence label missing: '+label);
 }
-if (!app.includes("status:'STORY-INFERRED APPROX'") || !app.includes("status:'REGION ONLY'") || !app.includes("L.circle(ll") || !app.includes("dashArray:'7 6'")) {
+if (!app.includes("status:'STORY-INFERRED APPROX'") || !app.includes("status:'REGION ONLY'") || !(app.includes("L.circle(ll") || app.includes("window.L.circle(ll")) || !app.includes("dashArray:'7 6'")) {
   throw new Error('Approximate/region Location Intelligence rendering is missing.');
 }
 if (!app.includes('Mapa pokazuje pewność, nie udaje precyzji') || app.includes('REAL MAP · tylko niezależnie zweryfikowane współrzędne')) {
