@@ -211,7 +211,7 @@ if (!app.includes("case-location-highlights") || !app.includes("locationHighligh
 if (!app.includes("#(?:kps_)?page_\\d+") || !app.includes("spoiler firewall aktywny")) {
   throw new Error('Owner-facing checkpoint cleanup is incomplete.');
 }
-if (!styles.includes(".case-schematic-map") || !styles.includes(".case-location-highlights") || !styles.includes(".case-map-approx-marker")) {
+if (!css.includes(".case-schematic-map") || !css.includes(".case-location-highlights") || !css.includes(".case-map-approx-marker")) {
   throw new Error('Location runtime CSS contract is incomplete.');
 }
 
