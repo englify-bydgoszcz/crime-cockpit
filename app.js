@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.7';
+  const FRONTEND_VERSION = '7.3.8';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -30,28 +30,28 @@
   };
   const LOCATION_VISUAL_CACHE = {
     'BK00002': {
-      'LOC-0001':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0001__Crouch_End.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0002':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0002__London.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0003':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0003__Saxby_on_Avon.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0004':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0004__Pye_Hall.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0005':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0005__Dingle_Dell.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0006':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0006__St_Botolph.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0007':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0007__Queens_Arms.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0008':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0008__Bath.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0009':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0009__Hastings.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0010':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0010__Lower_Westwood.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0011':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0011__Royal_United_Hospital.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0012':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0012__River_Avon.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0019':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0019__Trowbridge.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0020':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0020__Ferryman.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0021':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0021__Harley_Street.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0022':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0022__Charterhouse_Square.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0023':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0023__Tanner_Court.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0024':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0024__Boscombe_Down.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0025':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0025__Carlottas.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0026':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0026__Kings_Abbott.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0027':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0027__Ashton_House.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
-      'LOC-0028':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0028__Brick_Lane.png',basis:'Generated checkpoint-safe stylized place visual · p79'}
+      'LOC-0001':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0001__Crouch_End.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0002':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0002__London.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0003':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0003__Saxby_on_Avon.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0004':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0004__Pye_Hall.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0005':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0005__Dingle_Dell.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0006':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0006__St_Botolph.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0007':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0007__Queens_Arms.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0008':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0008__Bath.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0009':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0009__Hastings.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0010':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0010__Lower_Westwood.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0011':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0011__Royal_United_Hospital.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0012':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0012__River_Avon.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0019':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0019__Trowbridge.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0020':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0020__Ferryman.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0021':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0021__Harley_Street.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0022':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0022__Charterhouse_Square.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0023':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0023__Tanner_Court.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0024':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0024__Boscombe_Down.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0025':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0025__Carlottas.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0026':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0026__Kings_Abbott.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0027':{status:'PHOTOREAL CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0027__Ashton_House.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'},
+      'LOC-0028':{status:'PHOTOREAL REAL VISUAL',asset:'assets/locations/bk00002/LOC-0028__Brick_Lane.png',basis:'Generated checkpoint-safe photoreal place visual · p79 · v7.3.8'}
     }
   };
   const PORTRAIT_WEB_CACHE = {
@@ -730,7 +730,7 @@
     const cls=geoStatusClass_(geo?.status);
     const icon=cls==='verified'?'⌖':cls==='approx'?'◌':cls==='region'?'≈':'◇';
     if(visual.asset&&/^(?:https?:\/\/|data:image\/|assets\/locations\/)/i.test(visual.asset)){
-      return `<div class="case-location-visual ${cls} has-image"><img src="${esc(visual.asset)}" alt="Poglądowa wizualizacja miejsca: ${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="const p=this.parentElement;if(p){p.classList.remove('has-image');this.remove();}"/><small>${visual.status==='REAL VISUAL'?'Stylizowana wizualizacja miejsca':'Wizualizacja koncepcyjna'}</small></div>`;
+      return `<div class="case-location-visual ${cls} has-image"><img src="${esc(visual.asset)}" alt="Poglądowa wizualizacja miejsca: ${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="const p=this.parentElement;if(p){p.classList.remove('has-image');this.remove();}"/><small>${visual.status.includes('REAL')?'Fotorealistyczna wizualizacja miejsca':'Fotorealistyczna wizualizacja koncepcyjna'}</small></div>`;
     }
     return `<div class="case-location-visual ${cls}"><i>${icon}</i><span>${esc(name)}</span><small>${esc(humanGeoStatus_(geo?.status))}</small></div>`;
   }
