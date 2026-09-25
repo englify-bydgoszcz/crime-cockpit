@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.2.0'",
-  "styles.css?v=7.2.0",
-  "demo-data.js?v=7.2.0",
-  "app.js?v=7.2.0"
+  "const FRONTEND_VERSION = '7.2.1'",
+  "styles.css?v=7.2.1",
+  "demo-data.js?v=7.2.1",
+  "app.js?v=7.2.1"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -131,6 +131,11 @@ if (!app.includes('POSTĘP LEKTURY') || !app.includes('caseTotalPages_') || !app
 }
 if (!app.includes('TIMELINE LEKTURY') || !app.includes('reading-dot-line') || !app.includes('data-cockpit-time-index=') || !css.includes('.reading-checkpoint.current>i{')) {
   throw new Error('Immersive dotted reading timeline or checkpoint deep-links are missing.');
+}
+const framesDecl=app.indexOf("const frames=playback.filter(r=>String(cell(r,'Book ID'))===String(bookId));");
+const checkpointUse=app.indexOf("const checkpointMarkers=frames.map");
+if (framesDecl < 0 || checkpointUse < 0 || framesDecl > checkpointUse) {
+  throw new Error('Runtime regression: reading timeline uses frames before initialization.');
 }
 if (!app.includes('OSTATNIE AKTUALIZACJE') || !app.includes('recentUpdatesHtml') || !css.includes('.case-update-strip{')) {
   throw new Error('Recent character/location updates rail is missing.');

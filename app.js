@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.2.0';
+  const FRONTEND_VERSION = '7.2.1';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID'},
@@ -1081,6 +1081,7 @@
         const verified=!!((LOCATION_GEO_CACHE[String(bookId)]||{})[item.id]);
         return `<button class="case-update-card" data-case-go="locations"><div class="case-update-location ${verified?'verified':''}"><i>⌖</i><small>${verified?'REAL MAP':'STORY'}</small></div><div><span>NOWA LOKALIZACJA</span><strong>${esc(item.name)}</strong><small>${esc(item.subtitle)}</small><em>p${esc(item.page)} · ${esc(item.mentions)} wzm.</em></div></button>`;
       }).join('')||'<div class="empty">Brak nowych postaci lub miejsc od poprzedniego checkpointu.</div>';
+      const frames=playback.filter(r=>String(cell(r,'Book ID'))===String(bookId));
       const dotCount=totalPages?Math.min(96,Math.max(64,Math.round(totalPages/6))):64;
       const readRatio=totalPages?Math.min(1,currentPage/totalPages):0;
       const readingDots=Array.from({length:dotCount},(_,i)=>{const ratio=i/(dotCount-1);return `<i class="${ratio<=readRatio?'read':'future'}"></i>`;}).join('');
@@ -1093,7 +1094,6 @@
       const storyOnly=locations.filter(r=>!geoCache[String(cell(r,'Location ID'))]);
       const storyOnlyHtml=storyOnly.map(r=>`<span>${esc(cell(r,'Display Name'))}</span>`).join('');
 
-      const frames=playback.filter(r=>String(cell(r,'Book ID'))===String(bookId));
       const latestPage=Math.max(1,...frames.map(r=>parseInt(String(cell(r,'Progress')||'').match(/\d+/)?.[0]||'0',10)));
       const timeline=frames.map((r,i)=>{
         const page=parseInt(String(cell(r,'Progress')||'').match(/\d+/)?.[0]||'0',10);
