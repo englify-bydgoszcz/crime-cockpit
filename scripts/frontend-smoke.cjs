@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.5'",
-  "styles.css?v=7.3.5",
-  "demo-data.js?v=7.3.5",
-  "app.js?v=7.3.5"
+  "const FRONTEND_VERSION = '7.3.6'",
+  "styles.css?v=7.3.6",
+  "demo-data.js?v=7.3.6",
+  "app.js?v=7.3.6"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -215,4 +215,7 @@ if (!css.includes(".case-schematic-map") || !css.includes(".case-location-highli
   throw new Error('Location runtime CSS contract is incomplete.');
 }
 
+if (!app.includes("status:'STORY-INFERRED APPROX',lat:51.345786") || !app.includes("status:'STORY-INFERRED APPROX',lat:51.499720") || !app.includes("status:'REGION ONLY',lat:51.381389") || !app.includes("map-cluster-popup")) throw new Error('Soft geography expansion missing.');
+if (!app.includes("'REAL VERIFIED','STORY-INFERRED APPROX','REGION ONLY'")) throw new Error('Region-only map rendering missing.');
+if (!css.includes(".case-map-region-area") || !css.includes(".map-cluster-popup")) throw new Error('Soft geography CSS missing.');
 console.log('Crime Cockpit frontend smoke: PASS');
