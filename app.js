@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.6';
+  const FRONTEND_VERSION = '7.3.7';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -30,9 +30,28 @@
   };
   const LOCATION_VISUAL_CACHE = {
     'BK00002': {
-      'LOC-0023':{status:'PLACEHOLDER',basis:'Elegancki budynek przy Charterhouse Square; dokładna fasada i wejście nie są ustalone.'},
-      'LOC-0025':{status:'PLACEHOLDER',basis:'Rodzinny włoski lokal w rejonie za Harrods; bez dokładnego adresu i fasady.'},
-      'LOC-0027':{status:'PLACEHOLDER',basis:'Dawny szpital przekształcony w dom opieki w dolinie Bath; dokładna lokalizacja i architektura nie są ustalone.'}
+      'LOC-0001':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0001__Crouch_End.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0002':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0002__London.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0003':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0003__Saxby_on_Avon.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0004':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0004__Pye_Hall.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0005':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0005__Dingle_Dell.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0006':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0006__St_Botolph.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0007':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0007__Queens_Arms.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0008':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0008__Bath.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0009':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0009__Hastings.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0010':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0010__Lower_Westwood.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0011':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0011__Royal_United_Hospital.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0012':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0012__River_Avon.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0019':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0019__Trowbridge.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0020':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0020__Ferryman.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0021':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0021__Harley_Street.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0022':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0022__Charterhouse_Square.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0023':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0023__Tanner_Court.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0024':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0024__Boscombe_Down.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0025':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0025__Carlottas.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0026':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0026__Kings_Abbott.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0027':{status:'CONCEPT VISUAL',asset:'assets/locations/bk00002/LOC-0027__Ashton_House.png',basis:'Generated checkpoint-safe stylized place visual · p79'},
+      'LOC-0028':{status:'REAL VISUAL',asset:'assets/locations/bk00002/LOC-0028__Brick_Lane.png',basis:'Generated checkpoint-safe stylized place visual · p79'}
     }
   };
   const PORTRAIT_WEB_CACHE = {
@@ -710,8 +729,8 @@
     const visual=locationVisual_(bookId,id);
     const cls=geoStatusClass_(geo?.status);
     const icon=cls==='verified'?'⌖':cls==='approx'?'◌':cls==='region'?'≈':'◇';
-    if(visual.asset&&/^https?:\/\//i.test(visual.asset)){
-      return `<div class="case-location-visual ${cls} has-image"><img src="${esc(visual.asset)}" alt="Poglądowa wizualizacja miejsca: ${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="const p=this.parentElement;if(p){p.classList.remove('has-image');this.remove();}"/><small>Wizualizacja poglądowa</small></div>`;
+    if(visual.asset&&/^(?:https?:\/\/|data:image\/|assets\/locations\/)/i.test(visual.asset)){
+      return `<div class="case-location-visual ${cls} has-image"><img src="${esc(visual.asset)}" alt="Poglądowa wizualizacja miejsca: ${esc(name)}" loading="lazy" referrerpolicy="no-referrer" onerror="const p=this.parentElement;if(p){p.classList.remove('has-image');this.remove();}"/><small>${visual.status==='REAL VISUAL'?'Stylizowana wizualizacja miejsca':'Wizualizacja koncepcyjna'}</small></div>`;
     }
     return `<div class="case-location-visual ${cls}"><i>${icon}</i><span>${esc(name)}</span><small>${esc(humanGeoStatus_(geo?.status))}</small></div>`;
   }
@@ -1519,7 +1538,7 @@
       const verified=geoRows.filter(x=>String(x.geo?.status)==='REAL VERIFIED').length;
       const approximate=geoRows.filter(x=>String(x.geo?.status)==='STORY-INFERRED APPROX').length;
       const regional=geoRows.filter(x=>String(x.geo?.status)==='REGION ONLY').length;
-      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY · LOCATION INTELLIGENCE</div><h3>${locations.length} miejsc · ${verified} zweryfikowanych · ${approximate} przybliżonych · ${regional} regionalnych</h3><p>Mapa rozróżnia fakt, sensowne przybliżenie, sam region i przestrzeń fabularną. Dokładna pinezka jest zarezerwowana dla zweryfikowanego miejsca.</p></div><span class="status-pill good">UCZCIWA PRECYZJA</span></div><div class="case-real-map case-real-map-large" data-case-real-map></div><div class="case-map-legend-v2"><span class="verified"><i></i>Zweryfikowane miejsce</span><span class="approx"><i></i>Przybliżona lokalizacja</span><span class="region"><i></i>Znamy tylko region</span><span class="story"><i></i>Przestrzeń fabularna</span></div><div class="case-location-grid">${locations.map(r=>{const id=String(cell(r,'Location ID')||''),g=locationGeo_(bookId,id),cls=geoStatusClass_(g.status),visual=locationVisual_(bookId,id);return `<article class="case-location-card ${cls}">${locationVisualHtml_(bookId,r,g)}<div class="case-location-copy"><span class="case-location-status ${cls}">${esc(humanGeoStatus_(g.status))}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p>${g.region?`<div class="case-location-region"><b>Obszar:</b> ${esc(g.region)}</div>`:''}${g.basis?`<div class="case-location-basis"><b>Skąd to wiemy:</b> ${esc(g.basis)}</div>`:''}<small>${esc(cell(r,'Mention Count')||'—')} wzmianek · pierwsze p${esc(cell(r,'First Page')||'—')} · ostatnio p${esc(cell(r,'Last Page')||'—')} · pewność geo ${esc(g.confidence||'—')}%</small><em>${esc(visual.status==='PLACEHOLDER'?'Wizualizacja: bezpieczny placeholder':'Wizualizacja poglądowa')}</em></div></article>`}).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
+      stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">MAPA SPRAWY · LOCATION INTELLIGENCE</div><h3>${locations.length} miejsc · ${verified} zweryfikowanych · ${approximate} przybliżonych · ${regional} regionalnych · ${locations.filter(r=>locationVisual_(bookId,cell(r,'Location ID')).status!=='PLACEHOLDER').length} wizualizacji</h3><p>Mapa rozróżnia fakt, sensowne przybliżenie, sam region i przestrzeń fabularną. Dokładna pinezka jest zarezerwowana dla zweryfikowanego miejsca.</p></div><span class="status-pill good">UCZCIWA PRECYZJA</span></div><div class="case-real-map case-real-map-large" data-case-real-map></div><div class="case-map-legend-v2"><span class="verified"><i></i>Zweryfikowane miejsce</span><span class="approx"><i></i>Przybliżona lokalizacja</span><span class="region"><i></i>Znamy tylko region</span><span class="story"><i></i>Przestrzeń fabularna</span></div><div class="case-location-grid">${locations.map(r=>{const id=String(cell(r,'Location ID')||''),g=locationGeo_(bookId,id),cls=geoStatusClass_(g.status),visual=locationVisual_(bookId,id);return `<article class="case-location-card ${cls}">${locationVisualHtml_(bookId,r,g)}<div class="case-location-copy"><span class="case-location-status ${cls}">${esc(humanGeoStatus_(g.status))}</span><h4>${esc(cell(r,'Display Name'))}</h4><p>${esc(cell(r,'Who/what is this?'))}</p>${g.region?`<div class="case-location-region"><b>Obszar:</b> ${esc(g.region)}</div>`:''}${g.basis?`<div class="case-location-basis"><b>Skąd to wiemy:</b> ${esc(g.basis)}</div>`:''}<small>${esc(cell(r,'Mention Count')||'—')} wzmianek · pierwsze p${esc(cell(r,'First Page')||'—')} · ostatnio p${esc(cell(r,'Last Page')||'—')} · pewność geo ${esc(g.confidence||'—')}%</small><em>${esc(visual.status==='PLACEHOLDER'?'Wizualizacja: bezpieczny placeholder':'Wizualizacja poglądowa')}</em></div></article>`}).join('')||'<div class="empty">Brak miejsc.</div>'}</div>`;
     } else if(characterCaseTab==='suspicions'){
       stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">ŚCIANA PODEJRZEŃ</div><h3>Twoje hipotezy, nie werdykt systemu</h3></div><span class="status-pill warning">ASYSTENT NIE OCENIA WINY</span></div><div class="suspect-wall-ui">${walls.map(r=>`<article class="suspect-wall-card ${esc(String(cell(r,'Visual State')).toLowerCase())}">${portrait(cell(r,'Character ID'),cell(r,'Character'))}<div><span>${esc(cell(r,'Progress'))}</span><h4>${esc(cell(r,'Character'))}</h4><strong>${esc(cell(r,'Pin Type'))}</strong><p>${esc(cell(r,'Text'))}</p></div></article>`).join('')||'<div class="empty">Brak przypiętych hipotez.</div>'}</div>`;
     } else if(characterCaseTab==='memory'){
