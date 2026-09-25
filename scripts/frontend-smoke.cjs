@@ -285,10 +285,10 @@ if (!app.includes("readingArcadeBadges") || app.includes("passport.insertAdjacen
   throw new Error('Reading Arcade badges must re-render idempotently.');
 }
 
-if (app.includes("$('[data-room-book]',$('#readingRoomList')).forEach")) {
+if (/([^$]|^)\$\('\[data-room-book\]'\s*,\s*\$\('#readingRoomList'\)\)\.forEach/.test(app)) {
   throw new Error('Reading Room must never call forEach on single-element selector helper.');
 }
-if (!app.includes("$('[data-room-book]',$('#readingRoomList')).forEach")) {
+if (!app.includes("$$('[data-room-book]',$('#readingRoomList')).forEach")) {
   throw new Error('Reading Room multi-element selector binding is missing.');
 }
 
