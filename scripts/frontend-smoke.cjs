@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.0'",
-  "styles.css?v=7.3.0",
-  "demo-data.js?v=7.3.0",
-  "app.js?v=7.3.0"
+  "const FRONTEND_VERSION = '7.3.1'",
+  "styles.css?v=7.3.1",
+  "demo-data.js?v=7.3.1",
+  "app.js?v=7.3.1"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -173,6 +173,16 @@ if (!app.includes('locationVisualHtml_') || !css.includes('.case-location-visual
 }
 if (!app.includes("String(geo.status)==='REAL VERIFIED'") || !app.includes("String(x.geo?.status)==='STORY-INFERRED APPROX'")) {
   throw new Error('Exact pin and approximate rendering paths are not semantically separated.');
+}
+
+if (!app.includes("LIVE · DOCZYTUJĘ") || !app.includes("Math.min(4,jobs.length)") || !app.includes("12000") || !app.includes("deferred hydration crashed")) {
+  throw new Error('Bounded parallel deferred hydration guard is missing.');
+}
+if (app.includes("for (const keys of groups)")) {
+  throw new Error('Legacy sequential deferred module loader returned.');
+}
+if (!app.includes("LIVE · CORE · BŁĄD UI") || !app.includes("LIVE · CORE · HYDRATION ERROR")) {
+  throw new Error('Deferred hydration failure must never leave the badge silently stuck at LIVE · CORE.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
