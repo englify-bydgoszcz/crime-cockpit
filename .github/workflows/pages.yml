@@ -44,8 +44,12 @@ jobs:
           if [ -f styles.css ]; then cp styles.css dist/styles.css; fi
           if [ -f demo-data.js ]; then cp demo-data.js dist/demo-data.js; fi
 
-          # Portrait/media binaries are never deployed from GitHub.
+          # Private portraits/media remain excluded. Generated owner-safe location visuals are a compiled frontend asset.
           rm -rf dist/assets
+          if [ -d assets/locations ]; then
+            mkdir -p dist/assets
+            cp -R assets/locations dist/assets/locations
+          fi
           rm -rf dist/apps-script
           rm -f dist/site.zip
           touch dist/.nojekyll
@@ -54,6 +58,8 @@ jobs:
           test -f dist/app.js
           test -f dist/styles.css
           test -f dist/demo-data.js
+          test -f dist/assets/locations/bk00002/LOC-0003__Saxby_on_Avon.png
+          test -f dist/assets/locations/bk00002/LOC-0025__Carlottas.png
 
       - name: Frontend regression smoke
         run: node scripts/frontend-smoke.cjs
