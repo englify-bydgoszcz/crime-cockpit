@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.3';
+  const FRONTEND_VERSION = '7.3.4';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -443,8 +443,9 @@
     const run=(label,fn)=>{
       try{ fn(); }
       catch(error){
-        errors.push({label,error});
-        console.error('Crime Cockpit renderer failed',{label,error});
+        const surface=String(error?.cockpitSurface||label);
+        errors.push({label:surface,error});
+        console.error('Crime Cockpit renderer failed',{label:surface,error});
       }
     };
     run('TRYB',applyMode);
@@ -978,37 +979,47 @@
     return (locations||[]).map(r=>({row:r,geo:locationGeo_(bookId,cell(r,'Location ID'))}));
   }
   function initCaseGeoMap_(stage,bookId,locations){
-    const el=$('[data-case-real-map]',stage); if(!el)return;
+    const el=$('[data-case-real-map]',stage); if(!el)return {ok:true,reason:'NO_SLOT'};
     if(stage._caseLeafletMap){try{stage._caseLeafletMap.remove();}catch(_err){} stage._caseLeafletMap=null;}
     const mappable=caseGeoRows_(bookId,locations).filter(x=>['REAL VERIFIED','STORY-INFERRED APPROX'].includes(String(x.geo?.status||''))&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lng));
-    if(!mappable.length){el.innerHTML='<div class="case-map-fallback">Na tym etapie nie ma miejsc, które można uczciwie osadzić na mapie.</div>';return;}
+    if(!mappable.length){el.innerHTML='<div class="case-map-fallback">Na tym etapie nie ma miejsc, które można uczciwie osadzić na mapie.</div>';return {ok:true,reason:'NO_MAPPABLE'};}
     if(!window.L){
       el.innerHTML='<div class="case-map-fallback">Mapa bazowa nie załadowała się. Statusy lokalizacji i ich poziom pewności pozostają dostępne na liście poniżej.</div>';
-      return;
+      return {ok:true,reason:'LEAFLET_UNAVAILABLE'};
     }
-    const map=L.map(el,{zoomControl:true,scrollWheelZoom:false});
-    stage._caseLeafletMap=map;
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
-    const bounds=[];
-    mappable.forEach(({row,geo})=>{
-      const ll=[geo.lat,geo.lng];
-      const mentions=cell(row,'Mention Count');
-      const name=cell(row,'Display Name')||geo.label||'Miejsce';
-      const safeFact=cell(row,'Who/what is this?')||'';
-      if(String(geo.status)==='REAL VERIFIED'){
-        bounds.push(ll);
-        const icon=L.divIcon({className:'case-map-marker',html:'<span></span>',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-9]});
-        L.marker(ll,{icon}).addTo(map).bindPopup(`<strong>${esc(name)}</strong><br><span>Zweryfikowane miejsce</span><br><small>${esc(safeFact)}</small>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
-      } else {
-        const radiusM=Math.max(100,Number(geo.radiusKm||0.25)*1000);
-        const circle=L.circle(ll,{radius:radiusM,weight:1.5,dashArray:'7 6',fillOpacity:.08,opacity:.75,className:'case-map-approx-area'}).addTo(map);
-        bounds.push(...[circle.getBounds().getSouthWest(),circle.getBounds().getNorthEast()]);
-        L.circleMarker(ll,{radius:5,weight:1.5,fillOpacity:.22,className:'case-map-approx-anchor'}).addTo(map)
-          .bindPopup(`<strong>${esc(name)}</strong><br><span>Przybliżona lokalizacja · promień ok. ${esc(geo.radiusKm||0.25)} km</span><br><small>${esc(geo.basis||safeFact)}</small>`);
-      }
-    });
-    if(bounds.length===1)map.setView(bounds[0],12); else map.fitBounds(bounds,{padding:[28,28],maxZoom:11});
-    setTimeout(()=>map.invalidateSize(),40);
+    try{
+      const map=window.L.map(el,{zoomControl:true,scrollWheelZoom:false});
+      stage._caseLeafletMap=map;
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap contributors'}).addTo(map);
+      const bounds=[];
+      mappable.forEach(({row,geo})=>{
+        const ll=[geo.lat,geo.lng];
+        const mentions=cell(row,'Mention Count');
+        const name=cell(row,'Display Name')||geo.label||'Miejsce';
+        const safeFact=cell(row,'Who/what is this?')||'';
+        if(String(geo.status)==='REAL VERIFIED'){
+          bounds.push(ll);
+          const icon=window.L.divIcon({className:'case-map-marker',html:'<span></span>',iconSize:[18,18],iconAnchor:[9,9],popupAnchor:[0,-9]});
+          window.L.marker(ll,{icon}).addTo(map).bindPopup(`<strong>${esc(name)}</strong><br><span>Zweryfikowane miejsce</span><br><small>${esc(safeFact)}</small>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
+        } else {
+          const radiusM=Math.max(100,Number(geo.radiusKm||0.25)*1000);
+          const circle=window.L.circle(ll,{radius:radiusM,weight:1.5,dashArray:'7 6',fillOpacity:.08,opacity:.75,className:'case-map-approx-area'}).addTo(map);
+          bounds.push(circle.getBounds().getSouthWest(),circle.getBounds().getNorthEast());
+          window.L.circleMarker(ll,{radius:5,weight:1.5,fillOpacity:.22,className:'case-map-approx-anchor'}).addTo(map)
+            .bindPopup(`<strong>${esc(name)}</strong><br><span>Przybliżona lokalizacja · promień ok. ${esc(geo.radiusKm||0.25)} km</span><br><small>${esc(geo.basis||safeFact)}</small>`);
+        }
+      });
+      if(bounds.length===1)map.setView(bounds[0],12); else if(bounds.length)map.fitBounds(bounds,{padding:[28,28],maxZoom:11});
+      setTimeout(()=>{try{map.invalidateSize();}catch(_err){}},40);
+      return {ok:true,reason:'MAP_READY'};
+    }catch(error){
+      try{stage._caseLeafletMap?.remove();}catch(_err){}
+      stage._caseLeafletMap=null;
+      el.innerHTML='<div class="case-map-fallback"><strong>Mapa interaktywna jest chwilowo niedostępna.</strong><br><span>Lista miejsc i poziomy pewności pozostają kompletne poniżej.</span></div>';
+      console.warn('Crime Cockpit map degraded gracefully',{bookId,error});
+      window.__crimeCockpitMapError=String(error?.message||error||'MAP_ERROR');
+      return {ok:false,reason:'MAP_ERROR',error};
+    }
   }
 
   function renderCharacterCaseHub(){
@@ -1483,7 +1494,15 @@
   function renderCharacters(){
     const summary=$('#characterSummary'), groupsRoot=$('#characterGroups'), recall=$('#currentCharacterRecall'), search=$('#characterSearch'), bookFilter=$('#characterBookFilter');
     if(!summary||!groupsRoot||!recall||!search||!bookFilter) return;
-    renderCharacterCaseHub();
+    let caseHubError=null;
+    try{renderCharacterCaseHub();}
+    catch(error){
+      caseHubError=error;
+      console.error('Crime Cockpit character Case Cockpit failed',error);
+      const hero=$('#characterCaseHero'),stage=$('#characterCaseStage');
+      if(hero)hero.innerHTML='<div class="casefile-hero-copy"><div class="section-kicker">CASE COCKPIT</div><h2>Akta postaci są dostępne, ale widok sprawy wymaga naprawy.</h2><p>Reszta atlasu postaci pozostaje aktywna.</p></div>';
+      if(stage)stage.innerHTML='<div class="case-map-fallback">Widok Case Cockpit został bezpiecznie odizolowany od atlasu postaci.</div>';
+    }
     const registry=moduleRows('characterRegistry');
     const cast=safeCastRows();
     const coverage=moduleRows('characterCoverage');
@@ -1511,6 +1530,11 @@
     $$('[data-character-book]', $('#characters')).forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.characterBook))));
 
     const cov=$('#characterCoverageExpert'); if(cov){ const states={}; coverage.forEach(r=>{const s=String(cell(r,'Coverage State')||'UNKNOWN');states[s]=(states[s]||0)+1;}); cov.innerHTML=Object.entries(states).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<div class="feature-item"><span>${esc(k)}</span><span>${esc(v)}</span></div>`).join(''); }
+    if(caseHubError){
+      const tagged=new Error(String(caseHubError?.message||caseHubError||'CASE_COCKPIT_ERROR'));
+      tagged.cockpitSurface='POSTACIE / CASE COCKPIT';
+      throw tagged;
+    }
   }
 
   function characterTrailHtml_(characterId,bookId,name){
