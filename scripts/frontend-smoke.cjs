@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.7'",
-  "styles.css?v=7.3.7",
-  "demo-data.js?v=7.3.7",
-  "app.js?v=7.3.7"
+  "const FRONTEND_VERSION = '7.3.9'",
+  "styles.css?v=7.3.9",
+  "demo-data.js?v=7.3.9",
+  "app.js?v=7.3.9"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -232,5 +232,8 @@ for (const file of placeVisuals) {
 if (!app.includes("status:'REAL VISUAL'") || !app.includes("status:'CONCEPT VISUAL'") || !app.includes("assets\\/locations\\/")) {
   throw new Error('Place visual status/path contract missing.');
 }
+
+if (app.includes("Generated checkpoint-safe stylized place visual") || app.includes("Stylizowana wizualizacja miejsca")) throw new Error('Legacy stylized place-visual art direction leaked into owner UI.');
+if (!app.includes("Generated checkpoint-safe photoreal place visual") || !app.includes("Fotorealistyczna wizualizacja miejsca") || !app.includes("?v=2")) throw new Error('Photoreal place-visual cache-bust/art-direction contract missing.');
 
 console.log('Crime Cockpit frontend smoke: PASS');
