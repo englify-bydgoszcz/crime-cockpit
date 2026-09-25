@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.5.0';
+  const FRONTEND_VERSION = '7.5.1';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -92,6 +92,8 @@
   let casePlaybackIndex = -1;
   let characterSortMode = 'mentions';
   let witnessLineupState = {bookId:'',cycle:0,round:0,hits:0,answered:false,selectedId:'',misses:[],order:[]};
+  let backgroundCoreRetryCount = 0;
+  let backgroundCoreRetryTimer = null;
 
   const storage = {
     get(key, fallback='') {
@@ -140,6 +142,60 @@
   }
   function latestPerf_(kind){
     return [...perfSamples_()].reverse().find(x=>x.kind===kind)||null;
+  }
+
+  const CORE_SESSION_CACHE_KEY = 'crimeCockpitCoreSessionV1';
+  const CORE_SESSION_CACHE_MAX_AGE = 6 * 60 * 60 * 1000;
+  function cacheCorePayload_(payload){
+    try {
+      if(!payload?.ok) return;
+      window.sessionStorage.setItem(CORE_SESSION_CACHE_KEY,JSON.stringify({savedAt:Date.now(),payload}));
+    } catch(err) {
+      console.warn('Crime Cockpit core session cache unavailable',err);
+    }
+  }
+  function cachedCorePayload_(){
+    try {
+      const raw=window.sessionStorage.getItem(CORE_SESSION_CACHE_KEY);
+      if(!raw) return null;
+      const parsed=JSON.parse(raw);
+      if(!parsed?.payload?.ok || !Number.isFinite(Number(parsed.savedAt))) return null;
+      if(Date.now()-Number(parsed.savedAt)>CORE_SESSION_CACHE_MAX_AGE) return null;
+      return parsed;
+    } catch(err) {
+      console.warn('Crime Cockpit core session cache unreadable',err);
+      return null;
+    }
+  }
+  function sleep_(ms){ return new Promise(resolve=>setTimeout(resolve,ms)); }
+  async function fetchCoreWithRecovery_(){
+    let lastError=null;
+    const attempts=[22000,35000];
+    for(let i=0;i<attempts.length;i++){
+      const started=performance.now();
+      try{
+        const payload=requireOk(await jsonp(state.apiUrl,state.token,{scope:'core'},attempts[i]));
+        recordPerf_('core',started,i===0?'OK':'RECOVERED');
+        return payload;
+      }catch(err){
+        lastError=err;
+        recordPerf_('core',started,i===0?'ERROR':'RETRY_ERROR');
+        window.__crimeCockpitLastCoreFailure={at:new Date().toISOString(),message:String(err?.message||err||'UNKNOWN'),attempt:i+1};
+        if(i<attempts.length-1){
+          setSourceBadge('LIVE · PONAWIAM','warning','Pierwsza próba pobrania danych nie powiodła się. Cockpit ponawia połączenie automatycznie.');
+          await sleep_(1200);
+        }
+      }
+    }
+    throw lastError || new Error('CORE_REQUEST_FAILED');
+  }
+  function scheduleBackgroundCoreRetry_(){
+    if(backgroundCoreRetryTimer || backgroundCoreRetryCount>=3 || !state.apiUrl || !state.token) return;
+    backgroundCoreRetryCount+=1;
+    backgroundCoreRetryTimer=setTimeout(()=>{
+      backgroundCoreRetryTimer=null;
+      loadData(false);
+    },10000*backgroundCoreRetryCount);
   }
 
   const fallbackModules = [
@@ -293,7 +349,7 @@
     const message=String(originalError?.message||originalError||'UNKNOWN');
     try {
       const ping=await jsonp(state.apiUrl,state.token,{scope:'ping'},6000);
-      if(ping?.ok) return {label:'API OK · CORE REQUEST ERROR · DEMO',detail:message};
+      if(ping?.ok) return {label:'API DZIAŁA · DANE NIE DOTARŁY',detail:message};
       const err=String(ping?.error||'BACKEND_ERROR');
       if(err==='UNAUTHORIZED') return {label:'TOKEN · DEMO',detail:'Token nie pasuje do CRIME_COCKPIT_TOKEN.'};
       if(err.includes('BACKEND_NOT_CONFIGURED')) return {label:'API CONFIG · DEMO',detail:err};
@@ -405,8 +461,10 @@
       if (state.apiUrl && state.token) {
         phase='core-request';
         coreStarted=performance.now();
-        const payload=requireOk(await jsonp(state.apiUrl,state.token,{scope:'core'},22000));
-        recordPerf_('core',coreStarted,'OK');
+        const payload=await fetchCoreWithRecovery_();
+        cacheCorePayload_(payload);
+        backgroundCoreRetryCount=0;
+        if(backgroundCoreRetryTimer){clearTimeout(backgroundCoreRetryTimer);backgroundCoreRetryTimer=null;}
         phase='live-render';
         data = normalizeData(payload);
         setSourceBadge('LIVE · CORE','good');
@@ -426,23 +484,36 @@
         if(showToast) toast('Snapshot demonstracyjny gotowy');
       }
     } catch (err) {
-      if(coreStarted!=null&&phase==='core-request') recordPerf_('core',coreStarted,'ERROR');
       console.error('Crime Cockpit load failed', {phase, error:err});
       const liveRenderError = phase==='live-render';
       const diagnosis = liveRenderError
-        ? {label:'API OK · UI ERROR · DEMO',detail:String(err?.message||err||'FRONTEND_RENDER_ERROR')}
+        ? {label:'API działa · problem widoku',detail:String(err?.message||err||'FRONTEND_RENDER_ERROR')}
         : (state.apiUrl && state.token ? await diagnoseLiveFailure(err) : {label:'DEMO',detail:String(err?.message||err||'')});
+      const cached=!liveRenderError ? cachedCorePayload_() : null;
+      if(cached){
+        data=normalizeData(cached.payload);
+        setSourceBadge('OSTATNI LIVE · PONAWIAM','warning',diagnosis.detail||'Świeże dane są chwilowo niedostępne.');
+        try{
+          renderAll();
+          scheduleBackgroundCoreRetry_();
+          if(showToast) toast('Świeże dane chwilowo nie przyszły — pokazuję ostatni poprawny stan i spróbuję ponownie automatycznie.');
+          return;
+        }catch(cacheErr){
+          console.error('Crime Cockpit cached core render failed',cacheErr);
+        }
+      }
       data = normalizeData(window.CRIME_COCKPIT_DEMO || {});
-      setSourceBadge(diagnosis.label,'warning');
+      setSourceBadge(liveRenderError?'PROBLEM WIDOKU · DEMO':'API CHWILOWO NIEDOSTĘPNE · DEMO','warning',diagnosis.detail||'');
       try {
         renderAll();
       } catch (fallbackErr) {
         console.error('Crime Cockpit fallback render failed', fallbackErr);
-        setSourceBadge('UI ERROR','warning');
+        setSourceBadge('PROBLEM WIDOKU','warning');
       }
+      if(!liveRenderError) scheduleBackgroundCoreRetry_();
       if(showToast) toast(liveRenderError
-        ? `API LIVE działa, ale frontend ma błąd · ${diagnosis.detail}`
-        : `LIVE niedostępne · ${diagnosis.detail||'pokazuję demo'}`);
+        ? 'Dane dotarły, ale jeden z widoków się wysypał — pokazuję tryb awaryjny.'
+        : 'API chwilowo nie podało świeżych danych — Cockpit spróbuje ponownie automatycznie.');
     } finally {
       $('#refreshBtn').textContent = '↻';
     }
