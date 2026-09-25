@@ -1,30 +1,30 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.3.5';
+  const FRONTEND_VERSION = '7.3.6';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
       'LOC-0002':{status:'REAL VERIFIED',lat:51.507222,lng:-0.127500,label:'Londyn',precision:'CITY CENTRE',confidence:95},
-      'LOC-0003':{status:'STORY SPACE',label:'Saxby-on-Avon',confidence:100,basis:'Brak niezależnie zweryfikowanej lokalizacji.'},
-      'LOC-0004':{status:'STORY SPACE',label:'Pye Hall',confidence:100,basis:'Posiadłość fabularna; brak bezpiecznej dokładnej lokalizacji.'},
-      'LOC-0005':{status:'STORY SPACE',label:'Dingle Dell',confidence:100,basis:'Niejednoznaczna nazwa lasu; brak bezpiecznej dokładnej lokalizacji.'},
-      'LOC-0006':{status:'STORY SPACE',label:'kościół Świętego Botolfa',confidence:100,basis:'Wiele realnych kościołów nosi to wezwanie; tożsamość miejsca w historii nie jest zweryfikowana.'},
-      'LOC-0007':{status:'STORY SPACE',label:'Queen’s Arms',confidence:100,basis:'Niejednoznaczna nazwa pubu; brak zweryfikowanego dopasowania.'},
+      'LOC-0003':{status:'STORY-INFERRED APPROX',lat:51.345786,lng:-2.282179,label:'Saxby-on-Avon',precision:'APPROX REGION',radiusKm:12,region:'Avon valley / Bradford-on-Avon–Bath–Trowbridge',confidence:72,group:'SAXBY_CLUSTER',basis:'Fikcyjna wieś; szeroki anchor orientacyjny wynika z bezpiecznej geografii Bath / Lower Westwood / Trowbridge / Avon oraz zewnętrznego setting cross-checku. To nie jest twierdzenie o prawdziwej lokalizacji.'},
+      'LOC-0004':{status:'STORY SPACE',label:'Pye Hall',confidence:100,basis:'Posiadłość fabularna; brak bezpiecznej dokładnej lokalizacji.',group:'SAXBY_CLUSTER',parent:'LOC-0003',relative:'Pye Hall leży po drugiej stronie Dingle Dell względem strony wsi / wikariatu.'},
+      'LOC-0005':{status:'STORY SPACE',label:'Dingle Dell',confidence:100,basis:'Niejednoznaczna nazwa lasu; brak bezpiecznej dokładnej lokalizacji.',group:'SAXBY_CLUSTER',parent:'LOC-0003',relative:'Dingle Dell leży między skrajem wsi / wikariatem a Pye Hall.'},
+      'LOC-0006':{status:'STORY SPACE',label:'kościół Świętego Botolfa',confidence:100,basis:'Wiele realnych kościołów nosi to wezwanie; tożsamość miejsca w historii nie jest zweryfikowana.',group:'SAXBY_CLUSTER',parent:'LOC-0003',relative:'Kościół i cmentarz znajdują się w Saxby-on-Avon.'},
+      'LOC-0007':{status:'STORY SPACE',label:'Queen’s Arms',confidence:100,basis:'Niejednoznaczna nazwa pubu; brak zweryfikowanego dopasowania.',group:'SAXBY_CLUSTER',parent:'LOC-0003',relative:'Queen’s Arms stoi naprzeciwko bramy kościoła Świętego Botolfa.'},
       'LOC-0008':{status:'REAL VERIFIED',lat:51.381389,lng:-2.359722,label:'Bath',precision:'CITY CENTRE',confidence:95},
       'LOC-0009':{status:'REAL VERIFIED',lat:50.850000,lng:0.570000,label:'Hastings',precision:'TOWN CENTRE',confidence:90},
       'LOC-0010':{status:'REAL VERIFIED',lat:51.335970,lng:-2.279870,label:'Lower Westwood',precision:'SETTLEMENT',confidence:95},
       'LOC-0011':{status:'REAL VERIFIED',lat:51.394010,lng:-2.390610,label:'Royal United Hospital',precision:'CAMPUS',confidence:95},
-      'LOC-0012':{status:'STORY SPACE',label:'rzeka Avon',confidence:100,basis:'Realna nazwa rzeki, ale bezpieczny tekst nie ustala konkretnego odcinka.'},
+      'LOC-0012':{status:'REGION ONLY',lat:51.346900,lng:-2.251000,label:'rzeka Avon',precision:'REGION',radiusKm:12,region:'Avon corridor / Bath–Bradford-on-Avon',confidence:68,group:'SAXBY_CLUSTER',parent:'LOC-0003',basis:'Szeroki korytarz Avon powiązany z inferowanym regionem Saxby; nie jest to dokładny odcinek fabularnej rzeki.'},
       'LOC-0019':{status:'REAL VERIFIED',lat:51.320000,lng:-2.206944,label:'Trowbridge',precision:'TOWN CENTRE',confidence:95},
-      'LOC-0020':{status:'STORY SPACE',label:'Ferryman',confidence:100,basis:'Niejednoznaczna nazwa lokalu; brak zweryfikowanego dopasowania.'},
+      'LOC-0020':{status:'STORY SPACE',label:'Ferryman',confidence:100,basis:'Niejednoznaczna nazwa lokalu; brak zweryfikowanego dopasowania.',group:'SAXBY_CLUSTER',parent:'LOC-0003',relative:'Ferryman to drugi pub we wsi przy dolnym skrzyżowaniu; można do niego dojść od strony Pye Hall przez Dingle Dell.'},
       'LOC-0021':{status:'REAL VERIFIED',lat:51.520599,lng:-0.147700,label:'Harley Street',precision:'STREET REFERENCE',confidence:85},
       'LOC-0022':{status:'REAL VERIFIED',lat:51.521070,lng:-0.099830,label:'Charterhouse Square',precision:'SQUARE',confidence:95},
       'LOC-0023':{status:'STORY-INFERRED APPROX',lat:51.521070,lng:-0.099830,label:'Tanner Court',precision:'APPROX',radiusKm:0.25,region:'Charterhouse Square, Londyn',confidence:90,basis:'Bezpieczny tekst lokuje Tanner Court przy Charterhouse Square; środek placu jest kotwicą obszaru, nie adresem budynku.'},
       'LOC-0024':{status:'REAL VERIFIED',lat:51.161270,lng:-1.753170,label:'Boscombe Down',precision:'SITE REFERENCE',confidence:95},
-      'LOC-0025':{status:'REGION ONLY',label:'Carlotta’s',region:'okolice Harrods, Londyn',confidence:90,basis:'Bezpieczny opis lokuje restaurację za Harrods; dokładny adres nie jest ustalony.'},
+      'LOC-0025':{status:'STORY-INFERRED APPROX',lat:51.499720,lng:-0.163610,label:'Carlotta’s',precision:'APPROX',radiusKm:0.6,region:'Knightsbridge / za Harrodsem',confidence:88,basis:'Bezpieczny opis lokuje restaurację za Harrods; środek obszaru jest kotwicą Harrods, nie adresem restauracji.'},
       'LOC-0026':{status:'STORY SPACE',label:'King’s Abbott',confidence:100,basis:'Brak niezależnie zweryfikowanej lokalizacji.'},
-      'LOC-0027':{status:'REGION ONLY',label:'Ashton House',region:'dolina Bath / okolice Bath',confidence:90,basis:'Bezpieczny opis mówi o dawnym szpitalu w dolinie Bath; dokładny obiekt nie jest ustalony.'},
+      'LOC-0027':{status:'REGION ONLY',lat:51.381389,lng:-2.359722,label:'Ashton House',precision:'REGION',radiusKm:6,region:'dolina Bath / okolice Bath',confidence:82,basis:'Bath jest tylko środkiem szerokiego obszaru orientacyjnego; dokładny dawny szpital / dom opieki pozostaje nieznany.'},
       'LOC-0028':{status:'REAL VERIFIED',lat:51.521944,lng:-0.071667,label:'Brick Lane',precision:'STREET REFERENCE',confidence:85}
     }
   };
@@ -1001,16 +1001,16 @@
     const nodeHtml=rows.map(({row,geo})=>{
       const x=8+84*((geo.lng-minLng)/(maxLng-minLng||1));
       const y=8+84*(1-((geo.lat-minLat)/(maxLat-minLat||1)));
-      const approx=String(geo.status)==='STORY-INFERRED APPROX';
+      const approx=String(geo.status)==='STORY-INFERRED APPROX',regionOnly=String(geo.status)==='REGION ONLY';
       const name=cell(row,'Display Name')||geo.label||'Miejsce';
-      const detail=approx?`Przybliżony obszar · ok. ${geo.radiusKm||0.25} km`:'Zweryfikowane miejsce';
-      return `<button type="button" class="case-schematic-point ${approx?'approx':'verified'}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%" title="${esc(name)} · ${esc(detail)}"><i></i><span>${esc(name)}</span></button>`;
+      const detail=approx?`Przybliżony obszar · ok. ${geo.radiusKm||0.25} km`:regionOnly?`Znamy tylko region · ok. ${geo.radiusKm||5} km`:'Zweryfikowane miejsce';
+      return `<button type="button" class="case-schematic-point ${approx?'approx':regionOnly?'region':'verified'}" style="left:${x.toFixed(2)}%;top:${y.toFixed(2)}%" title="${esc(name)} · ${esc(detail)}"><i></i><span>${esc(name)}</span></button>`;
     }).join('');
     el.innerHTML=`<div class="case-schematic-map"><div class="case-schematic-grid"></div>${nodeHtml}<div class="case-schematic-caption"><strong>Mapa uproszczona</strong><span>${esc(reason||'Podkład interaktywny jest niedostępny.')} Pozycje wynikają wyłącznie z bezpiecznych współrzędnych; brakujące miejsca nie są sztucznie przypinane.</span></div></div>`;
   }
   function initCaseGeoMap_(stage,bookId,locations){
     const el=$('[data-case-real-map]',stage); if(!el)return {ok:true,reason:'NO_SLOT'};
-    const mappable=caseGeoRows_(bookId,locations).filter(x=>['REAL VERIFIED','STORY-INFERRED APPROX'].includes(String(x.geo?.status||''))&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lng));
+    const geoRowsAll=caseGeoRows_(bookId,locations); const mappable=geoRowsAll.filter(x=>['REAL VERIFIED','STORY-INFERRED APPROX','REGION ONLY'].includes(String(x.geo?.status||''))&&Number.isFinite(x.geo.lat)&&Number.isFinite(x.geo.lng));
     if(!mappable.length){el.innerHTML='<div class="case-map-fallback">Na tym etapie nie ma miejsc, które można uczciwie osadzić na mapie.</div>';return {ok:true,reason:'NO_MAPPABLE'};}
     if(!caseMapVisible_(el)){
       el.dataset.mapPending='1';
@@ -1053,12 +1053,15 @@
           window.L.marker(ll,{icon}).addTo(map).bindPopup(`<strong>${esc(name)}</strong><br><span>Zweryfikowane miejsce</span><br><small>${esc(safeFact)}</small>${mentions?`<br><small>${esc(mentions)} wzmianek do bieżącej strony</small>`:''}`);
         } else {
           bounds.push(ll);
-          const radiusM=Math.max(100,Number(geo.radiusKm||0.25)*1000);
+          const regionOnly=String(geo.status)==='REGION ONLY';
+          const radiusM=Math.max(regionOnly?1500:100,Number(geo.radiusKm||(regionOnly?5:0.25))*1000);
+          const clusterMembers=geo.group?geoRowsAll.filter(x=>x.geo?.parent===String(cell(row,'Location ID'))).map(x=>({name:cell(x.row,'Display Name'),relative:x.geo.relative||''})): [];
+          const clusterHtml=clusterMembers.length?`<div class="map-cluster-popup"><b>W tym orientacyjnym klastrze:</b>${clusterMembers.map(x=>`<span><strong>${esc(x.name)}</strong>${x.relative?` — ${esc(x.relative)}`:''}</span>`).join('')}</div>`:'';
           try{
-            const circle=window.L.circle(ll,{radius:radiusM,weight:1.5,dashArray:'7 6',fillOpacity:.08,opacity:.75,className:'case-map-approx-area'}).addTo(map);
+            const circle=window.L.circle(ll,{radius:radiusM,weight:regionOnly?1:1.5,dashArray:regionOnly?'3 8':'7 6',fillOpacity:regionOnly?.035:.08,opacity:regionOnly?.55:.75,className:regionOnly?'case-map-region-area':'case-map-approx-area'}).addTo(map);
             bounds.push(circle.getBounds().getSouthWest(),circle.getBounds().getNorthEast());
-            window.L.circleMarker(ll,{radius:5,weight:1.5,fillOpacity:.22,className:'case-map-approx-anchor'}).addTo(map)
-              .bindPopup(`<strong>${esc(name)}</strong><br><span>Przybliżona lokalizacja · promień ok. ${esc(geo.radiusKm||0.25)} km</span><br><small>${esc(geo.basis||safeFact)}</small>`);
+            const marker=window.L.circleMarker(ll,{radius:regionOnly?3:5,weight:1.5,fillOpacity:regionOnly?.12:.22,className:regionOnly?'case-map-region-anchor':'case-map-approx-anchor'}).addTo(map);
+            marker.bindPopup(`<strong>${esc(name)}</strong><br><span>${regionOnly?'Znamy tylko region':'Przybliżona lokalizacja'} · promień orientacyjny ok. ${esc(geo.radiusKm||(regionOnly?5:0.25))} km</span><br><small>${esc(geo.basis||safeFact)}</small>${clusterHtml}`);
           }catch(approxError){
             console.warn('Crime Cockpit approximate halo fallback',{name,approxError});
             const icon=window.L.divIcon({className:'case-map-approx-marker',html:'<span><i></i></span>',iconSize:[42,42],iconAnchor:[21,21],popupAnchor:[0,-20]});

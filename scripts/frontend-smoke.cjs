@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.3.5'",
-  "styles.css?v=7.3.5",
-  "demo-data.js?v=7.3.5",
-  "app.js?v=7.3.5"
+  "const FRONTEND_VERSION = '7.3.6'",
+  "styles.css?v=7.3.6",
+  "demo-data.js?v=7.3.6",
+  "app.js?v=7.3.6"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -102,7 +102,7 @@ if (!index.includes('leaflet@1.9.4') || !app.includes('const LOCATION_GEO_CACHE 
 for (const label of ['Zweryfikowane miejsce','Przybliżona lokalizacja','Znamy tylko region','Przestrzeń fabularna']) {
   if (!app.includes(label)) throw new Error('Location Intelligence label missing: '+label);
 }
-if (!app.includes("status:'STORY-INFERRED APPROX'") || !app.includes("status:'REGION ONLY'") || !app.includes("L.circle(ll") || !app.includes("dashArray:'7 6'")) {
+if (!app.includes("status:'STORY-INFERRED APPROX'") || !app.includes("status:'REGION ONLY'") || !(app.includes("L.circle(ll") || app.includes("window.L.circle(ll")) || !(app.includes("dashArray:'7 6'") || app.includes("?'3 8':'7 6'"))) {
   throw new Error('Approximate/region Location Intelligence rendering is missing.');
 }
 if (!app.includes('Mapa pokazuje pewność, nie udaje precyzji') || app.includes('REAL MAP · tylko niezależnie zweryfikowane współrzędne')) {
@@ -215,4 +215,7 @@ if (!css.includes(".case-schematic-map") || !css.includes(".case-location-highli
   throw new Error('Location runtime CSS contract is incomplete.');
 }
 
+if (!app.includes("status:'STORY-INFERRED APPROX',lat:51.345786") || !app.includes("status:'STORY-INFERRED APPROX',lat:51.499720") || !app.includes("status:'REGION ONLY',lat:51.381389") || !app.includes("map-cluster-popup")) throw new Error('Soft geography expansion missing.');
+if (!app.includes("'REAL VERIFIED','STORY-INFERRED APPROX','REGION ONLY'")) throw new Error('Region-only map rendering missing.');
+if (!css.includes(".case-map-region-area") || !css.includes(".map-cluster-popup")) throw new Error('Soft geography CSS missing.');
 console.log('Crime Cockpit frontend smoke: PASS');
