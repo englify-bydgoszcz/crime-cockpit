@@ -648,7 +648,7 @@
       const fact=String(cell(r,'Who is this?')||cell(r,'Safe Fact')||'');
       const role=String(cell(r,'Book Role')||cell(r,'Role')||'POSTAĆ');
       if(!name)return;
-      out.push({id,name,fact,role});
+      out.push({id,name,fact,role,tier:String(cell(r,'Cast Tier')||'')});
     });
     return out;
   }
@@ -661,7 +661,7 @@
     }
     return clue||humanRole(entry&&entry.role||'POSTAĆ')||'Bezpieczna karta postaci.';
   }
-  function ensureWitnessLineup_(bookId,dossiers,cast,smartCollisions,reset=false){
+  function ensureWitnessLineup_(bookId,dossiers,cast,collisions,reset=false){
     const roster=witnessLineupRoster_(dossiers,cast);
     const previous=witnessLineupState||{};
     if(reset||previous.bookId!==bookId||!Array.isArray(previous.order)||!previous.order.length){
@@ -724,8 +724,8 @@
   }
   function safeSexHint_(entry){
     const text=`${entry?.name||''} ${entry?.role||''} ${entry?.fact||''}`.toLowerCase();
-    const female=/\b(żona|matka|siostra|córka|narzeczona|wdowa|panna|pielęgniarka|lekarka|gospodyni|kobieta|dziewczyna)\b/i.test(text);
-    const male=/\b(mąż|ojciec|syn|brat|narzeczony|wdowiec|mężczyzna|ogrodnik|pastor|mechanik|asystent|sekretarz|inspektor|grabarz|dziedzic)\b/i.test(text);
+    const female=/(żona|matka|siostra|córka|narzeczona|wdowa|panna|pielęgniarka|lekarka|gospodyni|kobieta|dziewczyna)/i.test(text);
+    const male=/(mąż|ojciec|syn|brat|narzeczony|wdowiec|mężczyzna|ogrodnik|pastor|mechanik|asystent|sekretarz|inspektor|grabarz|dziedzic)/i.test(text);
     return female&&!male?'F':male&&!female?'M':'U';
   }
   function safeCharacterEntry_(id,cast,dossiers){
