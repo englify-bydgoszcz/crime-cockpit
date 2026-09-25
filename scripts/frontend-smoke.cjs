@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.4.0'",
-  "styles.css?v=7.4.0",
-  "demo-data.js?v=7.4.0",
-  "app.js?v=7.4.0"
+  "const FRONTEND_VERSION = '7.5.0'",
+  "styles.css?v=7.5.0",
+  "demo-data.js?v=7.5.0",
+  "app.js?v=7.5.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -247,6 +247,19 @@ if (!app.includes('data-temptation-shield="active"') || !app.includes('PREVIEW O
 }
 if (!css.includes('.queue-shield{')) {
   throw new Error('Temptation Shield styling is missing.');
+}
+
+if (!index.includes('id="readingArcade"') || !index.includes('CASE BINGO') || !index.includes('SEJF TEORII')) {
+  throw new Error('Reading Arcade shell is missing.');
+}
+if (!app.includes('function readingArcadeSnapshot_()') || !app.includes('function renderReadingArcade()') || !app.includes("renderReadingArcade();")) {
+  throw new Error('Reading Arcade renderer is missing.');
+}
+if (!app.includes('Liczymy aktywność detektywistyczną, nie trafność') || !app.includes('SEALED')) {
+  throw new Error('Reading Arcade no-correctness / sealed-theory guardrail is missing.');
+}
+if (!css.includes('.bingo-grid{') || !css.includes('.theory-vault-card{')) {
+  throw new Error('Reading Arcade styling is missing.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
