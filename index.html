@@ -8,7 +8,7 @@
   <title>Crime Cockpit</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b0d10'/%3E%3Cpath d='M22 69 41 29h18l19 40H63l-4-9H40l-4 9Zm23-21h9l-4-11Z' fill='%23d6b36a'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="styles.css?v=7.5.3" />
+  <link rel="stylesheet" href="styles.css?v=7.6.0" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="ambient-orb orb-a"></div><div class="ambient-orb orb-b"></div><div class="grain"></div></div>
@@ -130,8 +130,29 @@
     <section id="library" class="view" data-view="library">
       <div class="section-heading reveal library-heading">
         <div><div class="section-kicker">BIBLIOTEKA</div><h1>Cała kartoteka</h1><div class="vault-legend"><span class="vault-missing" aria-hidden="true">◌</span> brak EPUB-u w Vault</div></div>
-        <div class="library-tools"><label class="search-field"><span>⌕</span><input id="librarySearch" type="search" placeholder="Tytuł, autor, kraj, seria…" /></label><select id="lifecycleFilter"><option value="">Wszystkie statusy</option><option value="PROMOTE">W czołówce</option><option value="WATCH">Na radarze</option><option value="BENCH">Poczekalnia</option><option value="LOCKED">Zablokowane</option><option value="CURRENT NEXT">Bieżąca</option><option value="READ">Przeczytane</option><option value="RETIRE">Wycofane</option></select></div>
+        <div class="library-tools"><label class="search-field"><span>⌕</span><input id="librarySearch" type="search" placeholder="Tytuł, autor, kraj, seria…" /></label><select id="lifecycleFilter"><option value="">Wszystkie statusy</option><option value="PROMOTE">W czołówce</option><option value="WATCH">Na radarze</option><option value="BENCH">Poczekalnia</option><option value="LOCKED">Zablokowane</option><option value="CURRENT NEXT">Bieżąca</option><option value="READ">Przeczytane</option><option value="HOLD">Do audytu</option><option value="RETIRE">Wycofane</option></select></div>
       </div>
+      <section class="section-block reveal">
+        <div class="section-heading small">
+          <div><div class="section-kicker">VAULT BUILDER</div><h3>Co warto mieć, nie co czytać teraz?</h3></div>
+          <span class="status-pill good">ZERO READ-NEXT EFFECT</span>
+        </div>
+        <p class="small-note">Biblioteka rośnie własnym torem. Ten ranking premiuje długoterminową wartość, eksplorację i pokrycie kolekcji; nie przepycha książek do kolejki.</p>
+        <div id="vaultGrowthSummary" class="metric-grid"></div>
+        <div id="vaultBuilderTop" class="queue-cards compact-cards"></div>
+      </section>
+
+      <div class="split-grid reveal">
+        <article class="panel compact-panel">
+          <div class="section-heading small"><div><div class="section-kicker">SERIES BACKFILL</div><h3>Bez odciętych kikutów serii</h3></div><span class="status-pill muted">CONTEXT ≠ LOCK</span></div>
+          <div id="seriesBackfillSummary" class="feature-list"></div>
+        </article>
+        <article class="panel compact-panel">
+          <div class="section-heading small"><div><div class="section-kicker">DISCOVERY WATCH</div><h3>Co właśnie wpada na radar?</h3></div><span class="status-pill muted">RESEARCH LANE</span></div>
+          <div id="discoveryWatchSummary" class="feature-list"></div>
+        </article>
+      </div>
+
       <div id="libraryGrid" class="library-grid reveal"></div>
       <article class="panel expert-only reveal">
         <div class="section-heading small"><div><div class="section-kicker">SERIES MAP</div><h3>Mapa zależności serii i spoiler continuity</h3></div><span id="seriesMapStatus" class="status-pill muted">—</span></div>
@@ -153,6 +174,7 @@
         <button type="button" class="casefile-tab" data-character-case-tab="relations">Powiązania</button>
         <button type="button" class="casefile-tab" data-character-case-tab="collisions">Nie pomyl</button>
         <button type="button" class="casefile-tab" data-character-case-tab="lineup">Witness Line-Up</button>
+        <button type="button" class="casefile-tab" data-character-case-tab="investigation">Śledztwo</button>
         <button type="button" class="casefile-tab" data-character-case-tab="locations">Miejsca</button>
         <button type="button" class="casefile-tab" data-character-case-tab="suspicions">Podejrzenia</button>
         <button type="button" class="casefile-tab" data-character-case-tab="memory">Pamięć</button>
@@ -312,8 +334,8 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="demo-data.js?v=7.5.3"></script>
-  <script src="app.js?v=7.5.3"></script>
+  <script src="demo-data.js?v=7.6.0"></script>
+  <script src="app.js?v=7.6.0"></script>
   <!-- deploy-refresh: 2026-09-25T22:45+02:00 / v7.5.1 -->
 </body>
 </html>
