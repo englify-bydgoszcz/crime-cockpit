@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.5.3';
+  const FRONTEND_VERSION = '7.6.0';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -374,6 +374,16 @@
       ['characterRegistry','bookCast','characterRelations','characterEvidence','characterCoverage','castLoad','characterRecallEngine','identityCollisionLab','recurringCharacterRadar','characterProgressSync'],
       ['characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura']
     ];
+    // v7.6 extended sheets are opt-in: older APIs must not receive unknown keys.
+    if(boolv(data?.ui?.features?.extended_modules_api)){
+      semanticGroups.push(
+        ['vaultBuilder','seriesBackfill','discoveryWatch'],
+        ['suspectScreenTime','informationFlow','eventWindowBoard','witnessLedger','caseEvidenceLedger','parallelStoryLanes'],
+        ['timelineTimeMachine','whereWereThey','characterTimeline','characterCrossings','characterPaths','sceneHeatmap','storyClock'],
+        ['playgroundAnalytics','mysteryPassport','caseAwards','theoryMuseum','bookDNA','crimeAlmanac'],
+        ['memoryGlitchAtlas','caseReplay','panicButton','suspectDynamics','readingTrajectory','mapFog']
+      );
+    }
     const chunk_=(keys,size=6)=>Array.from({length:Math.ceil(keys.length/size)},(_,i)=>keys.slice(i*size,(i+1)*size));
     const moduleBatches=semanticGroups.flatMap((keys,groupIndex)=>chunk_(keys,6).map((batch,batchIndex)=>({
       label:`modules-${groupIndex+1}.${batchIndex+1}`,
@@ -754,6 +764,209 @@
     preloadRoot.querySelectorAll('[data-book-id]').forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.bookId))));
   }
 
+function libraryGrowthNumber_(book, directKey, extraKey, fallback=0){
+  const direct=numv(book?.[directKey]);
+  if(direct!=null) return direct;
+  const extra=numv(extraField(book,extraKey));
+  return extra!=null ? extra : fallback;
+}
+
+function libraryGrowthText_(book, directKey, extraKey){
+  const direct=String(book?.[directKey]??'').trim();
+  return direct || String(extraField(book,extraKey)||'').trim();
+}
+
+function vaultOwned_(book){
+  if(!book) return false;
+  if(book.vaultEpub===true) return true;
+  const state=String(book.vaultState||extraField(book,'Vault State')||'').toUpperCase();
+  return state.includes('ON DRIVE') || state.includes('OWNED') || state.includes('READY');
+}
+
+function acquisitionGate_(book){
+  return String(book?.recommendationGate||book?.gate||extraField(book,'Recommendation Gate')||'').toUpperCase();
+}
+
+function coverageDimensionScore_(owned, key, value, authorMode=false){
+  const normalized=String(value||'').trim();
+  if(!normalized) return 50;
+  const count=owned.filter(b=>String((key==='era'?libraryGrowthText_(b,'era','Epoka'):b?.[key])||'').trim()===normalized).length;
+  if(authorMode) return count===0?100:count===1?45:15;
+  return count===0?100:count===1?75:count===2?50:count<=4?30:15;
+}
+
+function vaultBuilderClientRows_(){
+  const books=safeArray(data.library);
+  const owned=books.filter(vaultOwned_);
+  return books.map(book=>{
+    const lifecycle=String(book.lifecycle||'').toUpperCase();
+    const gate=acquisitionGate_(book);
+    if(!book?.id || vaultOwned_(book) || lifecycle==='READ' || lifecycle==='CURRENT NEXT' || gate!=='AUTO PASS') return null;
+    const core=libraryGrowthNumber_(book,'bookFit','Core Book Fit',0);
+    if(core<=0) return null;
+    const info=libraryGrowthNumber_(book,'infoGain','Information Gain',50);
+    const diversity=libraryGrowthNumber_(book,'diversity','Diversity Value',50);
+    const discovery=libraryGrowthNumber_(book,'discoverySignal','Discovery Signal',0);
+    const freshness=libraryGrowthNumber_(book,'freshness','Freshness',0);
+    const community=libraryGrowthNumber_(book,'communityQuality','Community Quality',50);
+    const dataConfidence=libraryGrowthNumber_(book,'dataConfidence','Data Confidence',
+      book.metadataDebt!=null ? Math.max(0,100-(numv(book.metadataDebt)||0)) : 50);
+    const languageFriction=libraryGrowthNumber_(book,'languageFriction','Language Friction',0);
+    const era=libraryGrowthText_(book,'era','Epoka');
+    const coverage=(
+      coverageDimensionScore_(owned,'author',book.author,true)*.30+
+      coverageDimensionScore_(owned,'country',book.country,false)*.25+
+      coverageDimensionScore_(owned,'subgenre',book.subgenre,false)*.30+
+      coverageDimensionScore_(owned,'era',era,false)*.15
+    );
+    const strategic=core*.25+community*.10+info*.20+diversity*.15+discovery*.15+freshness*.05+dataConfidence*.10;
+    const access=Math.max(0,100-languageFriction);
+    const score=strategic*.65+coverage*.25+access*.10;
+    const state=score>=80?'BUILD NOW':score>=72?'STRONG ADD':score>=64?'GOOD SHELF ADD':score>=56?'OPPORTUNISTIC':'LATER';
+    const why=[];
+    const authorCount=owned.filter(b=>String(b.author||'')===String(book.author||'')).length;
+    const countryCount=owned.filter(b=>String(b.country||'')===String(book.country||'')).length;
+    const subgenreCount=owned.filter(b=>String(b.subgenre||'')===String(book.subgenre||'')).length;
+    if(book.author&&authorCount===0) why.push('nowy autor');
+    if(book.country&&countryCount===0) why.push('nowy kraj');
+    if(book.subgenre&&subgenreCount===0) why.push('nowy podgatunek');
+    if(info>=80) why.push('wysoki Info Gain');
+    if(diversity>=80) why.push('różnorodność');
+    if(discovery>=70) why.push('mocny Discovery');
+    if(core>=68) why.push('wysoki Core Fit');
+    return {book,score,coverage,strategic,access,state,why};
+  }).filter(Boolean).sort((a,b)=>b.score-a.score || String(a.book.title||'').localeCompare(String(b.book.title||''),'pl'));
+}
+
+function renderLibraryGrowth(){
+  const summary=$('#vaultGrowthSummary'), topRoot=$('#vaultBuilderTop'), seriesRoot=$('#seriesBackfillSummary'), discoveryRoot=$('#discoveryWatchSummary');
+  if(!summary||!topRoot||!seriesRoot||!discoveryRoot) return;
+  const books=safeArray(data.library), owned=books.filter(vaultOwned_), ranked=vaultBuilderClientRows_(), buildNow=ranked.filter(x=>x.state==='BUILD NOW').length;
+  const top=ranked[0]||null;
+  summary.innerHTML=[
+    ['W Vault',owned.length,'posiadane EPUB-y'],
+    ['Luki',ranked.length,'bezpieczne do budowania'],
+    ['BUILD NOW',buildNow,'mocne dodatki do biblioteki'],
+    ['Następny',top?top.book.title:'—',top?`${n(top.score)} / 100`:'brak gotowego kandydata']
+  ].map(([label,value,detail])=>`<div class="metric-card"><strong>${esc(value)}</strong><span>${esc(label)}</span><small>${esc(detail)}</small></div>`).join('');
+
+  topRoot.innerHTML=ranked.slice(0,8).map((x,i)=>{
+    const b=x.book;
+    return `<article class="queue-card" data-book-id="${esc(b.id||'')}">${coverHtml(b,'small')}<div class="queue-main"><div class="queue-title"><h3>#${i+1} ${esc(b.title)}</h3><span class="status-pill ${x.state==='BUILD NOW'?'good':'muted'}">${esc(x.state)}</span></div><p>${esc(x.why.join(' · ')||'wartościowe uzupełnienie kolekcji')}</p><div class="chip-row"><span class="chip">Coverage ${n(x.coverage,0)}</span><span class="chip">Library ${n(x.strategic,0)}</span><span class="chip">${esc(languageShort(b)||'route do sprawdzenia')}</span></div></div><div class="queue-score"><span>VAULT</span><strong>${n(x.score)}</strong><small>≠ Read Next</small></div></article>`;
+  }).join('')||'<div class="empty">Brak bezpiecznych kandydatów do rozbudowy Vaultu. To lepsze niż zgadywanie.</div>';
+  $('[data-book-id]',topRoot).forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.bookId))));
+  hydrateCovers(topRoot);
+
+  const backfillRows=moduleRows('seriesBackfill');
+  if(backfillRows.length){
+    const required=backfillRows.filter(r=>String(cell(r,'Backfill class')).toUpperCase()==='REQUIRED').length;
+    const context=backfillRows.filter(r=>String(cell(r,'Backfill class')).toUpperCase()==='CONTEXT').length;
+    const audits=backfillRows.filter(r=>String(cell(r,'Backfill class')).toUpperCase()==='VERIFY ORDER').length;
+    const seriesN=new Set(backfillRows.map(r=>String(cell(r,'Series'))).filter(Boolean)).size;
+    seriesRoot.innerHTML=[
+      ['Serie objęte backfillem',seriesN,'rejestr poprzedników'],
+      ['Kontekst serii',context,'uzupełnia katalog bez hard locka'],
+      ['Wymagane poprzedniki',required,'tylko one mogą blokować'],
+      ['Audyt kolejności',audits,'audyt zamiast zgadywania']
+    ].map(([l,v,d])=>`<div class="feature-item"><span><strong>${esc(l)}</strong><small>${esc(d)}</small></span><span>${esc(v)}</span></div>`).join('');
+  } else {
+    const groups=new Map();
+    books.filter(b=>b.series&&numv(b.volume)!=null).forEach(b=>{
+      const key=String(b.series),vol=numv(b.volume);
+      if(!groups.has(key))groups.set(key,[]);
+      groups.get(key).push({vol,book:b});
+    });
+    const stats=[...groups.entries()].map(([series,items])=>{
+      const vols=[...new Set(items.map(x=>x.vol).filter(v=>v>=1))].sort((a,b)=>a-b);
+      const max=vols.length?Math.max(...vols):0,missing=[];
+      for(let i=1;i<max;i++)if(!vols.includes(i))missing.push(i);
+      return {series,max,count:vols.length,missing};
+    }).filter(x=>x.max>1).sort((a,b)=>a.missing.length-b.missing.length||b.max-a.max);
+    const complete=stats.filter(x=>!x.missing.length).length;
+    const unresolved=stats.filter(x=>x.missing.length).length;
+    const scaffold=books.filter(b=>String(b.lifecycle).toUpperCase()==='HOLD'&&b.series).length;
+    seriesRoot.innerHTML=[
+      ['Kompletne ciągi',complete,'wg głównego pola Seria/Tom'],
+      ['Do audytu',unresolved,'mogą obejmować cross-series lub wyjątki'],
+      ['Scaffold HOLD',scaffold,'nowe tomy czekają na normalny audyt'],
+      ['Zasada','CONTEXT ≠ REQUIRED','frontend niczego sam nie blokuje']
+    ].map(([l,v,d])=>`<div class="feature-item"><span><strong>${esc(l)}</strong><small>${esc(d)}</small></span><span>${esc(v)}</span></div>`).join('');
+  }
+
+  const watchRows=moduleRows('discoveryWatch');
+  if(watchRows.length){
+    const leads=watchRows.filter(r=>cell(r,'Lead ID')||cell(r,'Title'));
+    const holds=leads.filter(r=>String(cell(r,'Status')).toUpperCase().includes('HOLD')).length;
+    discoveryRoot.innerHTML=[
+      ['Leady',leads.length,'z aktywnego researchu'],
+      ['Series HOLD',holds,'najpierw punkt wejścia / backfill'],
+      ['Źródła','multi-market','nagrody + premiery + kuracja'],
+      ['Efekt','0','Discovery nie omija Read Next gates']
+    ].map(([l,v,d])=>`<div class="feature-item"><span><strong>${esc(l)}</strong><small>${esc(d)}</small></span><span>${esc(v)}</span></div>`).join('');
+  } else {
+    const catalogued=books.filter(b=>['RADAR','DISCOVERY'].includes(String(b.layer||'').toUpperCase())&&String(b.lifecycle||'').toUpperCase()==='HOLD');
+    discoveryRoot.innerHTML=[
+      ['Scan','aktywny','tygodniowy + miesięczny + deep-gap'],
+      ['Lead inbox','API bridge','frontend gotowy; szczegóły po rozszerzeniu payloadu'],
+      ['Skatalogowane HOLD',catalogued.length,'nowe leady nie omijają audytu serii'],
+      ['Zasada','najpierw seria','późny tom nie zostaje samotnym kikutem']
+    ].map(([l,v,d])=>`<div class="feature-item"><span><strong>${esc(l)}</strong><small>${esc(d)}</small></span><span>${esc(v)}</span></div>`).join('');
+  }
+}
+
+function renderInvestigationCaseStage_(stage,bookId,dossiers,cast){
+  const currentScoped=String(bookId||'')===String(data.current.id||'');
+  const screen=currentScoped?moduleRows('suspectScreenTime'):[];
+  const flows=currentScoped?moduleRows('informationFlow'):[];
+  const windows=currentScoped?moduleRows('eventWindowBoard'):[];
+  const witness=currentScoped?moduleRows('witnessLedger'):[];
+  const evidence=currentScoped?moduleRows('caseEvidenceLedger'):[];
+  const lanes=currentScoped?moduleRows('parallelStoryLanes'):[];
+  const extLive=[screen,flows,windows,witness,evidence,lanes].some(rows=>rows.length);
+  if(extLive){
+    const screenHtml=screen.slice(0,8).map(r=>`<article class="note-card"><div class="note-meta"><span>${esc(cell(r,'Your pin')||'PIN')}</span><span>${esc(cell(r,'Page presence share')||'')}</span></div><blockquote>${esc(cell(r,'Character'))}</blockquote><div class="assistant-context">${esc(cell(r,'Name mentions')||'—')} wzmianek · strony ${esc(cell(r,'First page')||'—')}–${esc(cell(r,'Last page')||'—')}</div><p class="small-note">${esc(cell(r,'Your note')||'')} · screen time ≠ wina / ważność</p></article>`).join('');
+    const windowHtml=windows.slice(0,10).map(r=>`<div class="feature-item"><span><strong>${esc(cell(r,'Story time'))} · ${esc(cell(r,'People'))}</strong><small>${esc(cell(r,'Safe event'))} · ${esc(cell(r,'Evidence type'))}</small></span><span>${esc(cell(r,'State')||'')}</span></div>`).join('');
+    const flowHtml=flows.slice(0,8).map(r=>`<div class="feature-item"><span><strong>${esc(cell(r,'Origin'))} · ${esc(cell(r,'Origin type'))}</strong><small>${esc(cell(r,'Claim / information'))}</small></span><span>${esc(cell(r,'Current state')||'')}</span></div>`).join('');
+    const witnessHtml=witness.slice(0,8).map(r=>`<div class="feature-item"><span><strong>${esc(cell(r,'Source / speaker'))}</strong><small>${esc(cell(r,'Normalized safe claim'))}</small></span><span>${esc(cell(r,'Truth state')||cell(r,'Evidence state')||'')}</span></div>`).join('');
+    const evidenceHtml=evidence.slice(0,8).map(r=>`<div class="feature-item"><span><strong>${esc(cell(r,'Item / trace'))}</strong><small>${esc(cell(r,'Safe description'))}</small></span><span>${esc(cell(r,'State')||'')}</span></div>`).join('');
+    const laneHtml=lanes.slice(0,8).map(r=>`<div class="feature-item"><span><strong>${esc(cell(r,'Lane'))}</strong><small>${esc(cell(r,'Arc so far'))}</small></span><span>${esc(cell(r,'State')||'')}</span></div>`).join('');
+    stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">INVESTIGATION DESK</div><h3>Neutralne ślady, przepływ informacji i czas</h3><p>To narzędzia do orientacji w sprawie. Żaden z poniższych widoków nie liczy winy, alibi ani „ważności podejrzanego”.</p></div><span class="status-pill good">NO GUILT ENGINE</span></div>
+      <div class="metric-grid">${[
+        ['Twoje piny',screen.length,'screen time = attention only'],
+        ['Przepływy',flows.length,'obserwacja ≠ relacja ≠ wniosek'],
+        ['Okna czasu',windows.length,'chronologia bez alibi score'],
+        ['Ślady',evidence.length,'zero culprit weighting']
+      ].map(([l,v,d])=>`<div class="metric-card"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('')}</div>
+      <section class="section-block"><div class="section-heading small"><div><div class="section-kicker">SUSPECT SCREEN TIME</div><h3>Ile tekstu dostały osoby, które Ty przypiąłeś?</h3></div><span class="status-pill muted">ATTENTION ONLY</span></div><div class="mini-notes">${screenHtml||'<div class="empty">Brak jawnych pinów użytkownika.</div>'}</div></section>
+      <div class="split-grid">
+        <article class="panel"><div class="section-kicker">EVENT WINDOW BOARD</div><h3>Jawne punkty czasu</h3><div class="feature-list">${windowHtml||'<div class="empty">Brak okien czasu.</div>'}</div></article>
+        <article class="panel"><div class="section-kicker">INFORMATION FLOW</div><h3>Kto widział, powiedział, wywnioskował?</h3><div class="feature-list">${flowHtml||'<div class="empty">Brak przepływów.</div>'}</div></article>
+      </div>
+      <div class="split-grid">
+        <article class="panel"><div class="section-kicker">WITNESS LEDGER</div><h3>Atrybucja zeznań</h3><div class="feature-list">${witnessHtml||'<div class="empty">Brak zeznań.</div>'}</div></article>
+        <article class="panel"><div class="section-kicker">CASE EVIDENCE LEDGER</div><h3>Przedmioty i ślady</h3><div class="feature-list">${evidenceHtml||'<div class="empty">Brak zarejestrowanych śladów.</div>'}</div></article>
+      </div>
+      <article class="panel"><div class="section-kicker">PARALLEL STORY LANES</div><h3>Historie biegnące równolegle</h3><div class="feature-list">${laneHtml||'<div class="empty">Brak pasm narracyjnych.</div>'}</div><p class="small-note">Lane = organizacja. Wielkość, liczba zdarzeń ani ekspozycja nie oznaczają winy lub narracyjnej ważności.</p></article>`;
+  } else {
+    const walls=currentScoped?rowsForBook('suspectWall',bookId):[];
+    const trace=new Map((currentScoped?rowsForBook('characterEncounterTrace',bookId):[]).map(r=>[String(cell(r,'Character ID')),r]));
+    const derived=walls.map(r=>{
+      const id=String(cell(r,'Character ID')||''),tr=trace.get(id)||{};
+      return {name:cell(r,'Character'),pin:cell(r,'Pin Type'),note:cell(r,'Text'),mentions:cell(tr,'Mention Count'),first:cell(tr,'First Page'),last:cell(tr,'Last Page')};
+    });
+    const sync=rowsForBook('characterProgressSync',bookId)[0]||{};
+    stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">INVESTIGATION DESK</div><h3>Nowy pulpit śledczy jest gotowy</h3><p>Najświeższe ledy czasu, zeznań i przepływu informacji są już w arkuszu. Obecny API nie wystawia ich jeszcze jako osobnych modułów, więc frontend nie udaje danych, których nie dostał.</p></div><span class="status-pill warning">API BRIDGE PENDING</span></div>
+      <div class="metric-grid">${[
+        ['Twoje piny',derived.length,'z już dostępnych bezpiecznych danych'],
+        ['Granica',humanCheckpoint_(cell(sync,'Safe Through')),'nigdy poza checkpoint'],
+        ['Silnik winy','WYŁ.','brak guilt / alibi score'],
+        ['Tryb','SAFE','obserwacja ≠ relacja ≠ wniosek']
+      ].map(([l,v,d])=>`<div class="metric-card"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('')}</div>
+      <section class="section-block"><div class="section-heading small"><div><div class="section-kicker">SUSPECT SCREEN TIME · SAFE FALLBACK</div><h3>Twoje przypięte osoby</h3></div><span class="status-pill muted">ATTENTION ONLY</span></div><div class="mini-notes">${derived.map(r=>`<article class="note-card"><div class="note-meta"><span>${esc(r.pin||'PIN')}</span><span>${esc(r.mentions||'—')} wzmianek</span></div><blockquote>${esc(r.name)}</blockquote><div class="assistant-context">${r.first?`p${esc(r.first)}–p${esc(r.last||r.first)}`:'brak bezpiecznego śladu stronowego'}</div><p class="small-note">${esc(r.note||'')} · ekspozycja ≠ wina / ważność</p></article>`).join('')||'<div class="empty">Brak jawnych pinów dla tej książki.</div>'}</div></section>
+      <article class="panel"><div class="section-kicker">PEŁNY FEED</div><h3>Event Window · Information Flow · Witness/Evidence Ledger · Parallel Story Lanes</h3><p class="small-note">Interfejs jest już przygotowany pod te moduły. Pojawią się automatycznie, gdy read-only API zacznie wystawiać nowe karty; do tego czasu Cockpit celowo nie kopiuje ich na sztywno do kodu.</p></article>`;
+  }
+}
+
   function renderLibrary(){
     const q=($('#librarySearch').value||'').trim().toLocaleLowerCase('pl');
     const filter=$('#lifecycleFilter').value;
@@ -761,6 +974,7 @@
     $('#libraryGrid').innerHTML=rows.map(b=>`<article class="library-card" data-book-id="${esc(b.id||'')}">${coverHtml(b,'medium')}<h3>${esc(b.title)}${vaultSignalHtml(b)}</h3><p>${esc(b.author)}${b.country?` · ${esc(b.country)}`:''}</p><div class="library-meta"><div>${statusBadge(b.lifecycle)}</div><div>${b.decision!=null?`<strong>${n(b.decision)}</strong><span> ${esc(term('Decision Score','teraz'))}</span>`:''}</div></div><div class="expert-only small-note">${b.metadataDebt!=null?`${esc(term('Metadata Debt','Braki danych'))}: ${n(b.metadataDebt,0)}`:''}</div></article>`).join('')||`<div class="empty">Brak wyników.</div>`;
     $('#libraryGrid').querySelectorAll('.library-card').forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.bookId))));
     hydrateCovers($('#libraryGrid'));
+    renderLibraryGrowth();
     renderSeriesMap();
   }
 
@@ -1658,6 +1872,8 @@
           stage.innerHTML=`<div class="case-stage-heading"><div><div class="section-kicker">${round.paired?'WITNESS LINE-UP · NIE POMYL':'WITNESS LINE-UP · KTO TO?'}</div><h3>Runda ${esc(lineupState.round+1)}/${esc(lineupState.order.length)}</h3></div><span class="status-pill muted">SAFE SURFACES ONLY</span></div><section class="witness-lineup-shell"><div class="witness-clue"><span>BEZPIECZNA NOTATKA</span><p>${esc(round.clue)}</p>${round.paired?'<small>Runda celowana: w opcjach jest aktywna para z tablicy „Nie pomyl”.</small>':'<small>Źródło: bieżąca bezpieczna kartoteka postaci.</small>'}</div><div class="witness-options">${optionHtml}</div>${feedback}<div class="witness-progress"><div><i style="width:${esc(((lineupState.round+(answered?1:0))/lineupState.order.length)*100)}%"></i></div><span>${esc(lineupState.hits)} trafień w tej sesji</span></div>${answered?'<div class="witness-actions"><button type="button" class="button primary" data-lineup-next>'+(lineupState.round===lineupState.order.length-1?'Zobacz podsumowanie':'Następna karta')+' →</button></div>':''}<p class="small-note">To ćwiczenie pamięci, nie test detektywistyczny. Zero model effect · zero guilt signal · zero rekomendacyjnego feedbacku.</p></section>`;
         }
       }
+    } else if(characterCaseTab==='investigation'){
+      renderInvestigationCaseStage_(stage,bookId,dossiers,cast);
     } else if(characterCaseTab==='locations'){
       const geoRows=caseGeoRows_(bookId,locations);
       const verified=geoRows.filter(x=>String(x.geo?.status)==='REAL VERIFIED').length;
