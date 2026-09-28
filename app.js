@@ -1971,15 +1971,18 @@
   function renderDetectiveSignals(){
     const screen=$('#suspectScreenTimeList'), flow=$('#informationFlowList'), windows=$('#eventWindowList');
     if(screen){
-      const rows=rowsForBook('suspectScreenTime',data.current.id).slice().sort((a,b)=>(numv(cell(b,'Page presence share'))||0)-(numv(cell(a,'Page presence share'))||0));
+      const scoped=rowsForBook('suspectScreenTime',data.current.id);
+      const rows=(scoped.length?scoped:moduleRows('suspectScreenTime')).slice().sort((a,b)=>(numv(cell(b,'Page presence share'))||0)-(numv(cell(a,'Page presence share'))||0));
       screen.innerHTML=rows.slice(0,6).map(r=>`<div class="detective-signal"><div><strong>${esc(cell(r,'Character'))}</strong><small>${esc(cell(r,'Your pin'))} · ${esc(cell(r,'Pages with mention'))} stron z wzmianką</small></div><b>${esc(cell(r,'Page presence share')||'—')}</b><p>${esc(cell(r,'Your note')||'')}</p></div>`).join('')||'<div class="empty">Brak przypiętych podejrzeń do policzenia.</div>';
     }
     if(flow){
-      const rows=rowsForBook('informationFlow',data.current.id);
+      const scoped=rowsForBook('informationFlow',data.current.id);
+      const rows=scoped.length?scoped:moduleRows('informationFlow');
       flow.innerHTML=rows.slice(0,8).map(r=>`<div class="detective-signal"><div><strong>${esc(cell(r,'Origin'))}</strong><small>${esc(cell(r,'Origin type'))} · ${esc(cell(r,'Page / time'))}</small></div><span class="status-pill muted">${esc(cell(r,'Flow class'))}</span><p>${esc(cell(r,'Claim / information'))}</p><em>${esc(cell(r,'Current state')||'')}</em></div>`).join('')||'<div class="empty">Brak bezpiecznych łańcuchów informacji.</div>';
     }
     if(windows){
-      const rows=rowsForBook('eventWindowBoard',data.current.id);
+      const scoped=rowsForBook('eventWindowBoard',data.current.id);
+      const rows=scoped.length?scoped:moduleRows('eventWindowBoard');
       windows.innerHTML=rows.slice(0,10).map(r=>`<div class="event-window-row"><time>${esc(cell(r,'Story time'))}</time><div><strong>${esc(cell(r,'People'))}</strong><p>${esc(cell(r,'Safe event'))}</p><small>${esc(cell(r,'Location'))} · ${esc(cell(r,'Evidence type'))}</small></div><span>${esc(cell(r,'State'))}</span></div>`).join('')||'<div class="empty">Brak jawnych punktów czasu.</div>';
     }
   }
