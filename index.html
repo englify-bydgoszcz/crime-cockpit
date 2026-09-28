@@ -8,7 +8,7 @@
   <title>Crime Cockpit</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b0d10'/%3E%3Cpath d='M22 69 41 29h18l19 40H63l-4-9H40l-4 9Zm23-21h9l-4-11Z' fill='%23d6b36a'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="styles.css?v=7.5.3" />
+  <link rel="stylesheet" href="styles.css?v=7.6.0" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="ambient-orb orb-a"></div><div class="ambient-orb orb-b"></div><div class="grain"></div></div>
@@ -133,6 +133,34 @@
         <div class="library-tools"><label class="search-field"><span>⌕</span><input id="librarySearch" type="search" placeholder="Tytuł, autor, kraj, seria…" /></label><select id="lifecycleFilter"><option value="">Wszystkie statusy</option><option value="PROMOTE">W czołówce</option><option value="WATCH">Na radarze</option><option value="BENCH">Poczekalnia</option><option value="LOCKED">Zablokowane</option><option value="CURRENT NEXT">Bieżąca</option><option value="READ">Przeczytane</option><option value="RETIRE">Wycofane</option></select></div>
       </div>
       <div id="libraryGrid" class="library-grid reveal"></div>
+
+      <section class="library-intelligence reveal" aria-label="Inteligencja biblioteki">
+        <article class="panel vault-builder-panel">
+          <div class="section-heading small">
+            <div><div class="section-kicker">VAULT BUILDER</div><h2>Co warto mieć, nawet jeśli nie czytasz tego teraz?</h2></div>
+            <span class="status-pill good">ZERO READ-NEXT EFFECT</span>
+          </div>
+          <p class="small-note">Osobny silnik rozbudowy kolekcji. Nie używa bliskości kolejki jako premii i nigdy nie podnosi Book Fit tylko dlatego, że plik jest dostępny.</p>
+          <div id="vaultBuilderSummary" class="metric-grid compact-metrics"></div>
+          <div id="vaultBuilderList" class="vault-builder-list"></div>
+        </article>
+
+        <div class="split-grid library-intel-split">
+          <article class="panel">
+            <div class="section-heading small"><div><div class="section-kicker">DISCOVERY WATCH</div><h3>Stały radar nowych spraw</h3></div><span class="status-pill muted">GLOBAL</span></div>
+            <p class="small-note">Źródła z różnych rynków i języków. Lead nie staje się rekomendacją, dopóki nie przejdzie deduplikacji, series closure i preflightu.</p>
+            <div id="discoveryWatchSummary" class="metric-grid compact-metrics"></div>
+            <div id="discoveryWatchList" class="discovery-watch-list"></div>
+          </article>
+          <article class="panel">
+            <div class="section-heading small"><div><div class="section-kicker">SERIES PREFIX CLOSURE</div><h3>Zero odciętych kikutów serii</h3></div><span class="status-pill good">AUTO-BACKFILL</span></div>
+            <p class="small-note">Jeśli pojawia się tom N&gt;1, Cockpit najpierw domyka wcześniejszy katalog serii. CONTEXT nie udaje obowiązkowej kolejności czytania; hard lock powstaje wyłącznie z realnej zależności.</p>
+            <div id="seriesBackfillSummary" class="metric-grid compact-metrics"></div>
+            <div id="seriesBackfillList" class="feature-list"></div>
+          </article>
+        </div>
+      </section>
+
       <article class="panel expert-only reveal">
         <div class="section-heading small"><div><div class="section-kicker">SERIES MAP</div><h3>Mapa zależności serii i spoiler continuity</h3></div><span id="seriesMapStatus" class="status-pill muted">—</span></div>
         <p class="small-note">To warstwa prezentacyjna. Hard locki nadal pochodzą z rejestru zależności i nigdy nie są tutaj osłabiane.</p>
@@ -256,6 +284,18 @@
         <article id="readingArcadeSignal" class="panel arcade-signal"></article>
       </section>
 
+      <section class="detective-intelligence reveal" aria-label="Neutralne narzędzia śledcze">
+        <div class="section-heading small">
+          <div><div class="section-kicker">CASE INTELLIGENCE</div><h2>Co naprawdę wiadomo do tego miejsca?</h2></div>
+          <p>Neutralne narzędzia orientacyjne. Żadne z nich nie wylicza winy, prawdopodobieństwa sprawcy ani „prawdziwego alibi”.</p>
+        </div>
+        <div class="detective-intel-grid">
+          <article class="panel"><div class="section-kicker">SUSPECT SCREEN TIME</div><h3>Ile tekstu dostały Twoje własne podejrzenia?</h3><div id="suspectScreenTimeList" class="detective-signal-list"></div></article>
+          <article class="panel"><div class="section-kicker">INFORMATION FLOW</div><h3>Kto widział, kto powiedział, kto wywnioskował?</h3><div id="informationFlowList" class="detective-signal-list"></div></article>
+          <article class="panel wide"><div class="section-kicker">EVENT WINDOW BOARD</div><h3>Wieczór z jawnych punktów czasu</h3><div id="eventWindowList" class="event-window-list"></div></article>
+        </div>
+      </section>
+
       <div id="readingRoomList" class="timeline reveal"></div>
     </section>
 
@@ -312,8 +352,8 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="demo-data.js?v=7.5.3"></script>
-  <script src="app.js?v=7.5.3"></script>
-  <!-- deploy-refresh: 2026-09-25T22:45+02:00 / v7.5.1 -->
+  <script src="demo-data.js?v=7.6.0"></script>
+  <script src="app.js?v=7.6.0"></script>
+  <!-- deploy-refresh: 2026-09-28T18:20+02:00 / v7.6.0 -->
 </body>
 </html>
