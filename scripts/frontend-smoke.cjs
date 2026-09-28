@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.5.3'",
-  "styles.css?v=7.5.3",
-  "demo-data.js?v=7.5.3",
-  "app.js?v=7.5.3"
+  "const FRONTEND_VERSION = '7.6.0'",
+  "styles.css?v=7.6.0",
+  "demo-data.js?v=7.6.0",
+  "app.js?v=7.6.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -290,6 +290,26 @@ if (/([^$]|^)\$\('\[data-room-book\]'\s*,\s*\$\('#readingRoomList'\)\)\.forEach/
 }
 if (!app.includes("$$('[data-room-book]',$('#readingRoomList')).forEach")) {
   throw new Error('Reading Room multi-element selector binding is missing.');
+}
+
+
+for (const key of ['vaultBuilder','discoveryWatch','seriesBackfill','suspectScreenTime','informationFlow','eventWindowBoard','whereWereThey','witnessLedger','caseEvidenceLedger','parallelStoryLanes']) {
+  if (!app.includes("'"+key+"'")) throw new Error('v7.6 module hydration missing: '+key);
+}
+for (const id of ['vaultBuilderSummary','vaultBuilderList','discoveryWatchSummary','discoveryWatchList','seriesBackfillSummary','seriesBackfillList','suspectScreenTimeList','informationFlowList','eventWindowList']) {
+  if (!index.includes('id="'+id+'"')) throw new Error('v7.6 frontend surface missing: '+id);
+}
+for (const fn of ['renderVaultBuilder','renderDiscoveryWatch','renderSeriesBackfill','renderDetectiveSignals']) {
+  if (!app.includes('function '+fn+'(')) throw new Error('v7.6 renderer missing: '+fn);
+}
+if (!index.includes('ZERO READ-NEXT EFFECT') || !index.includes('SERIES PREFIX CLOSURE') || !index.includes('Zero odciętych kikutów serii')) {
+  throw new Error('v7.6 library guardrail copy missing.');
+}
+if (!index.includes('Neutralne narzędzia orientacyjne') || !app.includes('Page presence share') || !app.includes('Origin type') || !app.includes('Evidence type')) {
+  throw new Error('v7.6 neutral case intelligence contract missing.');
+}
+if (!css.includes('.vault-builder-card{') || !css.includes('.detective-intel-grid{') || !css.includes('.event-window-row{')) {
+  throw new Error('v7.6 intelligence CSS missing.');
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');

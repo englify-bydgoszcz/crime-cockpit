@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.5.3';
+  const FRONTEND_VERSION = '7.6.0';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -370,9 +370,11 @@
       ['robustnessLab','afterglow','bookNeighborhoods','opportunityAging','motifPreferenceGraph'],
       ['crimeDirector','decisionPhysics','selectorTrust','policyArena','preloadRadar'],
       ['contentSpectrum','contentEvidence','contentPreference','debriefDirector','provocationLab','readingJourney'],
-      ['transitionEngine','characterBond','endingPayoff','experiencePalette','translationSensitivity','readyShelf','acquisitionQueue'],
+      ['transitionEngine','characterBond','endingPayoff','experiencePalette','translationSensitivity','readyShelf','acquisitionQueue','vaultBuilder','discoveryWatch','seriesBackfill'],
       ['characterRegistry','bookCast','characterRelations','characterEvidence','characterCoverage','castLoad','characterRecallEngine','identityCollisionLab','recurringCharacterRadar','characterProgressSync'],
-      ['characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura']
+      ['characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura'],
+      ['characterTimeline','characterCrossings','characterPaths','sceneHeatmap','storyClock','timelineTimeMachine'],
+      ['whereWereThey','witnessLedger','caseEvidenceLedger','parallelStoryLanes','suspectScreenTime','informationFlow','eventWindowBoard']
     ];
     const chunk_=(keys,size=6)=>Array.from({length:Math.ceil(keys.length/size)},(_,i)=>keys.slice(i*size,(i+1)*size));
     const moduleBatches=semanticGroups.flatMap((keys,groupIndex)=>chunk_(keys,6).map((batch,batchIndex)=>({
@@ -762,6 +764,57 @@
     $('#libraryGrid').querySelectorAll('.library-card').forEach(el=>el.addEventListener('click',()=>openDossier(bookById(el.dataset.bookId))));
     hydrateCovers($('#libraryGrid'));
     renderSeriesMap();
+    renderVaultBuilder();
+    renderDiscoveryWatch();
+    renderSeriesBackfill();
+  }
+
+  function renderVaultBuilder(){
+    const summary=$('#vaultBuilderSummary'), root=$('#vaultBuilderList'); if(!summary||!root)return;
+    const rows=moduleRows('vaultBuilder').filter(r=>cell(r,'Book ID')&&numv(cell(r,'Acquire Next Score'))!=null);
+    const ranked=rows.filter(r=>numv(cell(r,'Rank'))!=null).sort((a,b)=>(numv(cell(a,'Rank'))||999)-(numv(cell(b,'Rank'))||999));
+    const top=ranked[0]||null, buildNow=rows.filter(r=>String(cell(r,'State')).toUpperCase()==='BUILD NOW').length;
+    const owned=rows.filter(r=>boolv(cell(r,'Owned EPUB'))).length;
+    summary.innerHTML=[
+      ['Następny do Vaultu',top?cell(top,'Title'):'—',top?('score '+n(numv(cell(top,'Acquire Next Score')),1)):'brak rankingu'],
+      ['BUILD NOW',buildNow,'mocne uzupełnienia biblioteki'],
+      ['Posiadane',owned,'EPUB-y widoczne w tym modelu'],
+      ['Wpływ na Read Next','0','to osobny silnik biblioteczny']
+    ].map(([l,v,d])=>`<div class="metric-card"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('');
+    root.innerHTML=ranked.slice(0,10).map(r=>{
+      const id=cell(r,'Book ID'), score=numv(cell(r,'Acquire Next Score')), state=String(cell(r,'State')||'');
+      return `<article class="vault-builder-card" data-book-id="${esc(id)}"><div class="vault-builder-rank">#${esc(cell(r,'Rank'))}</div><div class="vault-builder-main"><div><strong>${esc(cell(r,'Title'))}</strong><small>${esc(cell(r,'Author'))} · ${esc(cell(r,'Language route')||'route n/a')}</small></div><p>${esc(cell(r,'Why add to Vault')||'Długoterminowa wartość biblioteczna.')}</p></div><div class="vault-builder-score"><span class="status-pill ${state==='BUILD NOW'?'good':state==='STRONG ADD'?'brass':'muted'}">${esc(state||'CANDIDATE')}</span><strong>${score==null?'—':n(score,1)}</strong></div></article>`;
+    }).join('')||'<div class="empty">Vault Builder nie został jeszcze doczytany.</div>';
+    root.querySelectorAll('[data-book-id]').forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.bookId);if(b)openDossier(b)}));
+  }
+
+  function renderDiscoveryWatch(){
+    const summary=$('#discoveryWatchSummary'), root=$('#discoveryWatchList'); if(!summary||!root)return;
+    const rows=moduleRows('discoveryWatch').filter(r=>cell(r,'Source ID'));
+    const active=rows.filter(r=>String(cell(r,'Status')).toUpperCase().startsWith('ACTIVE')).length;
+    const regions=new Set(rows.map(r=>String(cell(r,'Region / language')||'').trim()).filter(Boolean));
+    summary.innerHTML=[
+      ['Aktywne źródła',active,'stałe lane’y discovery'],
+      ['Rynki / języki',regions.size,'różne ścieżki źródłowe'],
+      ['Tryb','SCAN','nagroda/lista ≠ rekomendacja'],
+      ['Series gate','HARD','prefix closure przed promocją']
+    ].map(([l,v,d])=>`<div class="metric-card"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('');
+    root.innerHTML=rows.slice(0,14).map(r=>`<div class="discovery-source"><div><strong>${esc(cell(r,'Source'))}</strong><small>${esc(cell(r,'Region / language'))} · ${esc(cell(r,'Cadence'))}</small></div><span class="status-pill ${String(cell(r,'Spoiler risk')).toUpperCase()==='GREEN'?'good':'warning'}">${esc(cell(r,'Status')||'ACTIVE')}</span><p>${esc(cell(r,'Primary signal')||'')}</p></div>`).join('')||'<div class="empty">Discovery Watch nie został jeszcze doczytany.</div>';
+  }
+
+  function renderSeriesBackfill(){
+    const summary=$('#seriesBackfillSummary'), root=$('#seriesBackfillList'); if(!summary||!root)return;
+    const rows=moduleRows('seriesBackfill').filter(r=>cell(r,'SB ID'));
+    const unresolved=rows.filter(r=>!/BACKFILLED|LINKED|RESOLVED|COMPLETE/i.test(String(cell(r,'Status')))).length;
+    const series=new Set(rows.map(r=>cell(r,'Series')).filter(Boolean));
+    const added=rows.filter(r=>String(cell(r,'Baza state')).toUpperCase()==='ADDED').length;
+    summary.innerHTML=[
+      ['Backfill',rows.length,'zarejestrowane wcześniejsze tomy'],
+      ['Serie',series.size,'domknięte / audytowane'],
+      ['Dodane do bazy',added,'bez sztucznego Read Next bonusu'],
+      ['Otwarte audyty',unresolved,unresolved?'wymagają sprawdzenia':'brak kikutów']
+    ].map(([l,v,d])=>`<div class="metric-card"><strong>${esc(v)}</strong><span>${esc(l)}</span><small>${esc(d)}</small></div>`).join('');
+    root.innerHTML=rows.slice().reverse().slice(0,12).map(r=>`<div class="feature-item"><span><strong>${esc(cell(r,'Predecessor title')||cell(r,'Trigger title'))}</strong><small>${esc(cell(r,'Series'))}${cell(r,'Predecessor vol')?` · #${esc(cell(r,'Predecessor vol'))}`:''} · ${esc(cell(r,'Backfill class')||'AUDIT')}</small></span><span>${esc(cell(r,'Status')||cell(r,'Promotion gate')||'—')}</span></div>`).join('')||'<div class="empty">Brak rekordów Series Backfill.</div>';
   }
 
   function characterRegistryById(id){ return moduleRows('characterRegistry').find(r=>String(cell(r,'Character ID'))===String(id||'')) || null; }
@@ -1911,9 +1964,29 @@
       return `<section class="reading-book-group" data-book-id="${esc(group.bookId)}"><button type="button" class="reading-book-head" data-room-book="${esc(group.bookId)}">${coverHtml(book,'small')}<span><span class="section-kicker">AKTA LEKTURY · ${group.notes.length} ${group.notes.length===1?'NOTATKA':'NOTATEK'}</span><strong>${esc(group.title)}</strong><small>${esc(book.author||'')}</small></span><i>Otwórz dossier →</i></button><div class="timeline">${group.notes.map(x=>`<article class="note-card"><div class="note-meta"><span>${esc(x.timestamp||'')}</span><span>${esc(x.progress||'')}</span><span>${esc(humanNoteType(x.type))}</span><span class="note-book-tag">${esc(x.title||group.title)}</span></div><blockquote>${esc(x.note||'')}</blockquote>${x.context?`<div class="assistant-context">${esc(x.context)}</div>`:''}<p class="expert-only small-note">Model: ${esc(x.modelUse||'HOLD UNTIL DEBRIEF')} · ${esc(x.status||'')}</p></article>`).join('')}</div></section>`;
     }).join('')||`<div class="empty">Brak notatek w Klubie lekturowym.</div>`;
     renderReadingArcade();
-    $$('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
+    renderDetectiveSignals();
+    $('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
     hydrateCovers($('#readingRoomList'));
   }
+  function renderDetectiveSignals(){
+    const screen=$('#suspectScreenTimeList'), flow=$('#informationFlowList'), windows=$('#eventWindowList');
+    if(screen){
+      const scoped=rowsForBook('suspectScreenTime',data.current.id);
+      const rows=(scoped.length?scoped:moduleRows('suspectScreenTime')).slice().sort((a,b)=>(numv(cell(b,'Page presence share'))||0)-(numv(cell(a,'Page presence share'))||0));
+      screen.innerHTML=rows.slice(0,6).map(r=>`<div class="detective-signal"><div><strong>${esc(cell(r,'Character'))}</strong><small>${esc(cell(r,'Your pin'))} · ${esc(cell(r,'Pages with mention'))} stron z wzmianką</small></div><b>${esc(cell(r,'Page presence share')||'—')}</b><p>${esc(cell(r,'Your note')||'')}</p></div>`).join('')||'<div class="empty">Brak przypiętych podejrzeń do policzenia.</div>';
+    }
+    if(flow){
+      const scoped=rowsForBook('informationFlow',data.current.id);
+      const rows=scoped.length?scoped:moduleRows('informationFlow');
+      flow.innerHTML=rows.slice(0,8).map(r=>`<div class="detective-signal"><div><strong>${esc(cell(r,'Origin'))}</strong><small>${esc(cell(r,'Origin type'))} · ${esc(cell(r,'Page / time'))}</small></div><span class="status-pill muted">${esc(cell(r,'Flow class'))}</span><p>${esc(cell(r,'Claim / information'))}</p><em>${esc(cell(r,'Current state')||'')}</em></div>`).join('')||'<div class="empty">Brak bezpiecznych łańcuchów informacji.</div>';
+    }
+    if(windows){
+      const scoped=rowsForBook('eventWindowBoard',data.current.id);
+      const rows=scoped.length?scoped:moduleRows('eventWindowBoard');
+      windows.innerHTML=rows.slice(0,10).map(r=>`<div class="event-window-row"><time>${esc(cell(r,'Story time'))}</time><div><strong>${esc(cell(r,'People'))}</strong><p>${esc(cell(r,'Safe event'))}</p><small>${esc(cell(r,'Location'))} · ${esc(cell(r,'Evidence type'))}</small></div><span>${esc(cell(r,'State'))}</span></div>`).join('')||'<div class="empty">Brak jawnych punktów czasu.</div>';
+    }
+  }
+
   function humanNoteType(t){ return ({HYPOTHESIS:'teoria',CHARACTER:'postać',ATMOSPHERE:'atmosfera',PACE:'tempo',CONSTRUCTION:'konstrukcja',QUESTION:'pytanie',EMOTION:'reakcja',CLUE:'trop',OTHER:'notatka'})[t]||t||'notatka'; }
 
   function healthPill(status){
@@ -2028,7 +2101,7 @@
 
   function renderBackendAtlas(){
     const root=$('#backendAtlas'); if(!root)return;
-    const keys=['crimeDirector','decisionPhysics','selectorTrust','policyArena','preloadRadar','contentSpectrum','contentPreference','debriefDirector','provocationLab','readingJourney','transitionEngine','characterBond','endingPayoff','experiencePalette','translationSensitivity','characterRegistry','bookCast','characterRelations','characterCoverage','castLoad','characterRecallEngine','identityCollisionLab','recurringCharacterRadar','characterProgressSync','characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura'];
+    const keys=['crimeDirector','decisionPhysics','selectorTrust','policyArena','preloadRadar','vaultBuilder','discoveryWatch','seriesBackfill','contentSpectrum','contentPreference','debriefDirector','provocationLab','readingJourney','transitionEngine','characterBond','endingPayoff','experiencePalette','translationSensitivity','characterRegistry','bookCast','characterRelations','characterCoverage','castLoad','characterRecallEngine','identityCollisionLab','recurringCharacterRadar','characterProgressSync','characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura','characterTimeline','characterCrossings','characterPaths','sceneHeatmap','storyClock','timelineTimeMachine','whereWereThey','witnessLedger','caseEvidenceLedger','parallelStoryLanes','suspectScreenTime','informationFlow','eventWindowBoard'];
     root.innerHTML=keys.map(key=>{const m=moduleData(key), rows=safeArray(m.rows), status=m.status||'UNAVAILABLE'; return `<article class="atlas-card"><div><span class="atlas-dot ${status==='OK'?'ok':''}"></span><strong>${esc(moduleTitle(key,key))}</strong></div><p>${rows.length} rekordów · ${esc(status)}</p></article>`}).join('');
   }
 
