@@ -1965,7 +1965,7 @@
     }).join('')||`<div class="empty">Brak notatek w Klubie lekturowym.</div>`;
     renderReadingArcade();
     renderDetectiveSignals();
-    $('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
+    $$('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
     hydrateCovers($('#readingRoomList'));
   }
   function renderDetectiveSignals(){
