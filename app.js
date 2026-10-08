@@ -2287,7 +2287,7 @@
   }
   function wireV8BookLinks(root){
     if(!root)return;
-    $('[data-v8-book-id]',root).forEach(el=>el.addEventListener('click',()=>{
+    $$('[data-v8-book-id]',root).forEach(el=>el.addEventListener('click',()=>{
       const b=bookById(el.dataset.v8BookId); if(b) openDossier(b);
     }));
   }
