@@ -522,3 +522,61 @@ footer{width:min(1500px,calc(100% - 48px));margin:0 auto;padding:20px 0 34px;bor
 .event-window-row:last-child{border-bottom:0}.event-window-row time{font-family:var(--mono);font-weight:800;color:var(--brass)}.event-window-row p{margin:4px 0;font-size:.9rem}.event-window-row small{color:var(--muted)}.event-window-row>span{font-size:.75rem;color:var(--muted);text-align:right;max-width:160px}
 @media (max-width:980px){.compact-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.detective-intel-grid{grid-template-columns:1fr}.detective-intel-grid>.wide{grid-column:auto}}
 @media (max-width:680px){.vault-builder-card{grid-template-columns:38px minmax(0,1fr)}.vault-builder-score{grid-column:2;justify-items:start;grid-auto-flow:column;justify-content:start;align-items:center}.event-window-row{grid-template-columns:1fr}.event-window-row>span{text-align:left;max-width:none}}
+
+
+/* ===== Crime Cockpit v8 · grouped owner surfaces ===== */
+.v8-flight-plan{position:relative}
+.horizon-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+.horizon-card{min-width:0;padding:16px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012));box-shadow:inset 0 1px 0 rgba(255,255,255,.025)}
+.horizon-card.current{border-color:rgba(116,198,157,.45);box-shadow:inset 0 0 0 1px rgba(116,198,157,.08),0 14px 38px rgba(0,0,0,.18)}
+.horizon-card.frontier{border-color:rgba(139,182,217,.34)}
+.horizon-card.campaign{border-color:rgba(214,179,106,.4)}
+.horizon-card.owner-intent{border-style:dashed}
+.horizon-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.horizon-card h3{font-family:Georgia,"Times New Roman",serif;margin:13px 0 7px;font-size:20px}
+.horizon-card p{color:var(--muted);font-size:13px;line-height:1.55;margin:0 0 12px}
+.horizon-card>small{display:block;color:var(--muted2);font-size:11px;line-height:1.45;margin-top:10px}
+.horizon-gate{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:4px}
+.horizon-gate span{font-size:9px;letter-spacing:.16em;color:var(--muted2);font-weight:800}
+.horizon-gate strong{font-size:11px;line-height:1.45;font-weight:650;color:var(--text)}
+.horizon-support{margin-top:14px}
+.v8-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:14px 0}
+.v8-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.v8-list{display:grid;gap:8px;margin-top:12px}
+.v8-item{padding:11px 12px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.018);min-width:0}
+.v8-item[data-v8-book-id]{cursor:pointer;transition:.16s ease}
+.v8-item[data-v8-book-id]:hover{border-color:var(--line-strong);transform:translateY(-1px)}
+.v8-item-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.v8-item-head>div{display:grid;gap:3px;min-width:0}
+.v8-item-head strong{font-size:13px}
+.v8-item-head small,.v8-item>small{color:var(--muted2);font-size:10px;line-height:1.4}
+.v8-item p{margin:7px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+.court-row{padding:12px;border:1px solid var(--line);border-radius:14px;background:rgba(255,255,255,.018);cursor:pointer}
+.court-row p{font-size:11px;color:var(--muted);line-height:1.5;margin:7px 0}
+.court-row p strong{color:var(--text);margin-right:5px}
+.court-row small{color:var(--muted2)}
+.frontier-focus{margin-top:14px;border-color:rgba(139,182,217,.24)}
+.frontier-card-v8{display:grid;grid-template-columns:1fr auto;gap:10px 18px;align-items:start}
+.frontier-card-v8 h3{margin:8px 0 3px;font-family:Georgia,serif;font-size:24px}
+.frontier-card-v8 p{margin:0;color:var(--muted);line-height:1.55}
+.frontier-card-v8>p,.frontier-card-v8>small{grid-column:1/-1}
+.frontier-card-v8>small{color:var(--muted2)}
+.frontier-priority{display:grid;text-align:right}.frontier-priority span{font-size:9px;color:var(--muted2);text-transform:uppercase;letter-spacing:.12em}.frontier-priority strong{font-size:28px;color:var(--blue)}
+.translation-health{margin:10px 0}
+.translation-health-card{display:flex;align-items:baseline;gap:8px;padding:10px 12px;border-radius:12px;border:1px solid var(--line)}
+.translation-health-card.good{border-color:rgba(116,198,157,.3);background:rgba(116,198,157,.05)}
+.translation-health-card.warning{border-color:rgba(219,119,119,.32);background:rgba(219,119,119,.06)}
+.translation-health-card strong{font-size:18px}.translation-health-card span{font-size:11px;color:var(--muted)}
+.campaign-panel{border-color:rgba(214,179,106,.28);margin:14px 0}
+.campaign-head{display:grid;grid-template-columns:1fr minmax(220px,.45fr);gap:22px;align-items:start}
+.campaign-head h3{font-family:Georgia,serif;font-size:24px;margin:8px 0 4px}.campaign-head p,.campaign-head small{color:var(--muted);line-height:1.55}
+.campaign-steps{display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px}
+.campaign-step{flex:0 0 145px;display:grid;gap:5px;border:1px solid var(--line-strong);border-radius:13px;padding:10px;background:rgba(214,179,106,.04)}
+.campaign-step.soft{border-style:dashed;opacity:.82}.campaign-step span{font-size:10px;color:var(--brass);font-weight:800}.campaign-step strong{font-size:12px;line-height:1.35}.campaign-step small{font-size:9px;color:var(--muted2)}
+.blind-lineup-v8{border-color:rgba(214,179,106,.24)}
+.blind-card-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.blind-card{border:1px solid var(--line);border-radius:16px;padding:13px;background:linear-gradient(160deg,rgba(214,179,106,.04),rgba(255,255,255,.012))}
+.blind-card-top{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}.blind-card-top strong{font-family:Georgia,serif}.blind-card-top span{font-size:9px;color:var(--muted);text-align:right}
+.blind-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:11px}.blind-stats span{display:flex;justify-content:space-between;gap:6px;border-top:1px solid var(--line);padding-top:5px;color:var(--muted2);font-size:9px;text-transform:uppercase}.blind-stats b{color:var(--text);font-size:9px}
+@media (max-width:1180px){.horizon-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.horizon-card.current{grid-column:1/-1}.v8-grid.three{grid-template-columns:repeat(2,minmax(0,1fr))}.blind-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.horizon-grid,.v8-grid,.v8-grid.three,.blind-card-grid{grid-template-columns:1fr}.horizon-card.current{grid-column:auto}.frontier-card-v8,.campaign-head{grid-template-columns:1fr}.frontier-priority{text-align:left}.campaign-steps{margin-inline:-4px}}

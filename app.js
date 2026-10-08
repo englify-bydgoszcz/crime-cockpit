@@ -1,7 +1,7 @@
 (() => {
   const $ = (s, root=document) => root.querySelector(s);
   const $$ = (s, root=document) => [...root.querySelectorAll(s)];
-  const FRONTEND_VERSION = '7.6.0';
+  const FRONTEND_VERSION = '8.0.0';
   const LOCATION_GEO_CACHE = {
     'BK00002': {
       'LOC-0001':{status:'REAL VERIFIED',lat:51.579712,lng:-0.123729,label:'Crouch End',precision:'AREA CENTROID',confidence:95},
@@ -214,6 +214,7 @@
     {id:'missions',label:'Misje',enabled:true,owner:false,expert:true,order:58,icon:'◆'},
     {id:'model',label:'Jak myśli system?',enabled:true,owner:false,expert:true,order:60,icon:'∿'},
     {id:'arena',label:'Arena modeli',enabled:true,owner:false,expert:true,order:63,icon:'⚔'},
+    {id:'playground',label:'Playground',enabled:true,owner:true,expert:true,order:65,icon:'✧',description:'Eksperymenty i kontrfakty bez wpływu na ranking'},
     {id:'lab',label:'Laboratorium',enabled:true,owner:false,expert:true,order:70,icon:'⚗'}
   ];
 
@@ -374,7 +375,13 @@
       ['characterRegistry','bookCast','characterRelations','characterEvidence','characterCoverage','castLoad','characterRecallEngine','identityCollisionLab','recurringCharacterRadar','characterProgressSync'],
       ['characterEncounterTrace','locationRegistry','bookLocations','suspicionTimeline','caseLoadMonitor','caseFileAssets','caseFileDossiers','characterAppearanceEvidence','checkpointSnapshots','reentryPackBuilder','caseDelta','characterVisualStates','visualCollisionBoard','relationGraphFeed','characterUnlocks','characterTheoryPins','suspectWall','characterRecallFeedback','characterMemoryState','caseboardPlayback','caseSceneState','dossierAura'],
       ['characterTimeline','characterCrossings','characterPaths','sceneHeatmap','storyClock','timelineTimeMachine'],
-      ['whereWereThey','witnessLedger','caseEvidenceLedger','parallelStoryLanes','suspectScreenTime','informationFlow','eventWindowBoard']
+      ['whereWereThey','witnessLedger','caseEvidenceLedger','parallelStoryLanes','suspectScreenTime','informationFlow','eventWindowBoard','seriesHealth','discoveryBalance','vaultPacks','translationGateway','qualityEvidence','polishEditionPipeline','translationStateReconciler','vaultSentinel','crimeCabinet','alibiDesk','rankingTimeMachine','trialChamber','paroleBoard','editionDelta','openQuestions','evidenceBroker','loadBearingWalls','falsificationLab','crimeChemistry','missionControl','crimeEvolutionAtlas','genesisTimeCapsule','wildcardReactor','tasteCollider','crimeMultiverse','blindLineup','readingFrontier','readingCampaigns','readingCampaignRoute','readingIntents','readingHorizon'],
+      ['seriesHealth','discoveryBalance','vaultPacks','translationGateway','qualityEvidence','polishEditionPipeline'],
+      ['translationStateReconciler','vaultSentinel','crimeCabinet','alibiDesk','rankingTimeMachine','trialChamber'],
+      ['paroleBoard','editionDelta','openQuestions','evidenceBroker','loadBearingWalls','falsificationLab'],
+      ['crimeChemistry','missionControl','crimeEvolutionAtlas','genesisTimeCapsule','wildcardReactor','tasteCollider'],
+      ['crimeMultiverse','blindLineup','readingFrontier','readingCampaigns','readingCampaignRoute','readingIntents'],
+      ['readingHorizon']
     ];
     const chunk_=(keys,size=6)=>Array.from({length:Math.ceil(keys.length/size)},(_,i)=>keys.slice(i*size,(i+1)*size));
     const moduleBatches=semanticGroups.flatMap((keys,groupIndex)=>chunk_(keys,6).map((batch,batchIndex)=>({
@@ -603,6 +610,7 @@
     run('GRANICE WIEDZY',renderFrontier);
     run('ROI RESEARCHU',renderEnrichmentEngine);
     run('ARENA MODELI',renderArena);
+    run('PLAYGROUND',renderPlayground);
     run('LABORATORIUM',renderLab);
     run('OKŁADKI',hydrateCovers);
     run('ANIMACJE',observeReveals);
@@ -680,6 +688,7 @@
     renderCandidateShelf();
     renderLifecycle();
     renderLatestNotes();
+    renderReadingHorizonV8();
   }
 
   function renderMetrics(){
@@ -726,6 +735,7 @@
     $('#queueBody').innerHTML=data.candidates.map((b,i)=>`<tr><td>${b.decisionRank||i+1}</td><td><strong>${esc(b.title)}</strong></td><td>${esc(b.author)}</td><td>${n(b.decision)}</td><td>${n(b.bookFit)}</td><td>${n(b.readNext)}</td><td>${n(b.discoverySignal)}</td><td>${n(b.infoGain)}</td><td>${n(b.sessionBoost)}</td><td>${statusBadge(b.lifecycle)}</td><td>${esc(languageUi(b))}</td><td>${esc(b.risk||'')}</td></tr>`).join('');
     renderUndercoverGems();
     renderParetoShelf();
+    renderDecisionIntelligenceV8();
   }
 
   function queueNarrative(b){
@@ -767,6 +777,7 @@
     renderVaultBuilder();
     renderDiscoveryWatch();
     renderSeriesBackfill();
+    renderLibraryIntelligenceV8();
   }
 
   function renderVaultBuilder(){
@@ -1965,6 +1976,7 @@
     }).join('')||`<div class="empty">Brak notatek w Klubie lekturowym.</div>`;
     renderReadingArcade();
     renderDetectiveSignals();
+    renderOpenQuestionsV8();
     $$('[data-room-book]',$('#readingRoomList')).forEach(el=>el.addEventListener('click',()=>{const b=bookById(el.dataset.roomBook);if(b)openDossier(b)}));
     hydrateCovers($('#readingRoomList'));
   }
@@ -2072,6 +2084,7 @@
     renderExplanationDiff();
     renderPredictionMarket();
     renderUncertaintyBudget();
+    renderLearningLabV8();
   }
 
   function renderLab(){
@@ -2262,6 +2275,189 @@
     $$('[data-character-id]',dialog).forEach(el=>el.addEventListener('click',()=>{dialog.close();openCharacterDossier(el.dataset.characterId)}));
     const charGo=$('[data-go-characters]',dialog); if(charGo) charGo.addEventListener('click',()=>{const bid=charGo.dataset.goCharacters;dialog.close();setView('characters');const f=$('#characterBookFilter');if(f){f.value=bid;renderCharacters();}});
     dialog.showModal();
+  }
+
+
+  // ---------- v8 grouped backlog harvest ----------
+  function v8Empty(text='Brak danych LIVE dla tego modułu.'){ return `<div class="empty">${esc(text)}</div>`; }
+  function v8RowBookId(r){ return cell(r,'Book ID','Entry Book ID','Object ID','Trigger ID') || ''; }
+  function v8Item(title,meta='',badge='',body='',bookId=''){
+    const id=bookId? ` data-v8-book-id="${esc(bookId)}"` : '';
+    return `<div class="v8-item"${id}><div class="v8-item-head"><div><strong>${esc(title||'—')}</strong>${meta?`<small>${esc(meta)}</small>`:''}</div>${badge?`<span class="status-pill muted">${esc(badge)}</span>`:''}</div>${body?`<p>${esc(body)}</p>`:''}</div>`;
+  }
+  function wireV8BookLinks(root){
+    if(!root)return;
+    $$('[data-v8-book-id]',root).forEach(el=>el.addEventListener('click',()=>{
+      const b=bookById(el.dataset.v8BookId); if(b) openDossier(b);
+    }));
+  }
+  function v8First(key,pred){ const rows=moduleRows(key); return pred?rows.find(pred):rows[0]; }
+
+  function renderReadingHorizonV8(){
+    const root=$('#readingHorizonCards'), mission=$('#missionControlStrip'), intents=$('#readingIntentShelf');
+    if(root){
+      const rows=moduleRows('readingHorizon').slice().sort((a,b)=>(numv(cell(a,'Display order'))||99)-(numv(cell(b,'Display order'))||99));
+      root.innerHTML=rows.map(r=>{
+        const lane=String(cell(r,'Lane')||'').toLowerCase().replace(/[^a-z]+/g,'-');
+        const horizon=cell(r,'Horizon'), object=cell(r,'Object'), stateText=cell(r,'State'), gate=cell(r,'Action gate');
+        const pressure=cell(r,'Owner pressure'), why=cell(r,'Why it is here'), id=cell(r,'Linked ID');
+        return `<article class="horizon-card ${esc(lane)}"><div class="horizon-top"><span class="section-kicker">${esc(horizon)} · ${esc(cell(r,'Lane'))}</span><span class="status-pill muted">${esc(stateText)}</span></div><h3>${esc(object)}</h3><p>${esc(why)}</p><div class="horizon-gate"><span>BRAMKA</span><strong>${esc(gate)}</strong></div><small>${esc(pressure||'ZERO PRESSURE')} · ${esc(id)}</small></article>`;
+      }).join('')||v8Empty('Flight Plan czeka na moduł Reading Horizon.');
+    }
+    if(mission){
+      const rows=moduleRows('missionControl').filter(r=>/^MC-0[1-4]$/i.test(String(cell(r,'Step')||''))).slice(0,4);
+      mission.innerHTML=rows.map(r=>v8Item(cell(r,'Action'),`${cell(r,'Phase')} · ${cell(r,'Status')}`,cell(r,'Can run now?'),cell(r,'Guardrail'))).join('')||v8Empty('Mission Control czeka na dane.');
+    }
+    if(intents){
+      const rows=moduleRows('readingIntents').filter(r=>/^RI-/i.test(String(cell(r,'Intent ID')||'')));
+      intents.innerHTML=rows.map(r=>v8Item(cell(r,'Object'),`${cell(r,'Intent type')} · ${cell(r,'Strength')}`,cell(r,'State'),cell(r,'Notes'))).join('')||v8Empty('Brak zapisanych planów właściciela.');
+    }
+  }
+
+  function renderDecisionIntelligenceV8(){
+    const alibi=$('#alibiDeskList'), walls=$('#loadBearingList'), time=$('#rankingTimeMachineList'), court=$('#trialChamberList'), frontier=$('#readingFrontierCard');
+    if(alibi){
+      const rows=moduleRows('alibiDesk').slice(0,6);
+      alibi.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`#${cell(r,'Rank')} · ${cell(r,'Gate')}`,cell(r,'Lifecycle'),cell(r,'Blocker')||cell(r,'Why not now?')||cell(r,'TX / source state'),cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(alibi);
+    }
+    if(walls){
+      const rows=moduleRows('loadBearingWalls').slice(0,6);
+      walls.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`Decision #${cell(r,'Decision Rank')} · Core #${cell(r,'Core Rank')}`,cell(r,'Diagnosis')||'ANATOMY',cell(r,'Support')||cell(r,'Why')||`Core Fit ${cell(r,'Core Fit')}`,cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(walls);
+    }
+    if(time){
+      const rows=moduleRows('rankingTimeMachine').slice(0,7);
+      time.innerHTML=rows.map(r=>{
+        const d=numv(cell(r,'Δ rank')); const badge=d==null?'—':d>0?`↑ ${d}`:d<0?`↓ ${Math.abs(d)}`:'→ 0';
+        return v8Item(cell(r,'Title'),`baseline #${cell(r,'Rank baseline')} → teraz #${cell(r,'Rank now')}`,badge,cell(r,'Reason')||cell(r,'Change reason'),cell(r,'Book ID'));
+      }).join('')||v8Empty();
+      wireV8BookLinks(time);
+    }
+    if(court){
+      const rows=moduleRows('trialChamber').slice(0,5);
+      court.innerHTML=rows.map(r=>`<div class="court-row" data-v8-book-id="${esc(cell(r,'Book ID'))}"><div><span class="section-kicker">#${esc(cell(r,'Rank'))} · ${esc(cell(r,'Title'))}</span><p><strong>ZA</strong> ${esc(cell(r,'Defense'))}</p><p><strong>PRZECIW</strong> ${esc(cell(r,'Prosecution'))}</p><small>${esc(cell(r,'Cross-examination'))}</small></div></div>`).join('')||v8Empty();
+      wireV8BookLinks(court);
+    }
+    if(frontier){
+      const rows=moduleRows('readingFrontier').filter(r=>/^RF-/i.test(String(cell(r,'Frontier ID')||'')));
+      const r=rows.find(x=>String(cell(x,'State')).includes('CHALLENGER')) || rows.filter(x=>numv(cell(x,'Frontier Priority'))!=null).sort((a,b)=>(numv(cell(b,'Frontier Priority'))||0)-(numv(cell(a,'Frontier Priority'))||0))[0];
+      frontier.innerHTML=r?`<div class="frontier-card-v8"><div><span class="status-pill brass">${esc(cell(r,'Distance'))}</span><h3>${esc(cell(r,'Title'))}</h3><p>${esc(cell(r,'Author'))} · ${esc(cell(r,'Genre / lane'))}</p></div><div class="frontier-priority"><span>Frontier Priority</span><strong>${n(numv(cell(r,'Frontier Priority')),1)}</strong></div><p>${esc(cell(r,'Why this could work'))}</p><small>${esc(cell(r,'Continuity'))} · ${esc(cell(r,'PL route'))} · zero Crime Rank effect</small></div>`:v8Empty('Frontier Challenger nie jest jeszcze dostępny.');
+    }
+  }
+
+  function renderLibraryIntelligenceV8(){
+    const series=$('#seriesHealthV8'), balance=$('#discoveryBalanceV8'), packs=$('#vaultPacksV8'), sentinel=$('#vaultSentinelV8');
+    const gateway=$('#translationGatewayV8'), pipe=$('#polishPipelineV8'), quality=$('#qualityEvidenceV8'), ts=$('#translationStateV8');
+    const campaign=$('#readingCampaignV8'), evolution=$('#crimeEvolutionV8'), parole=$('#paroleBoardV8'), delta=$('#editionDeltaV8');
+    if(series){
+      const rows=moduleRows('seriesHealth').slice().sort((a,b)=>(numv(cell(b,'Known books'))||0)-(numv(cell(a,'Known books'))||0)).slice(0,6);
+      series.innerHTML=rows.map(r=>v8Item(cell(r,'Series'),`${cell(r,'Known books')} znanych · ${cell(r,'Locked')} locked`,cell(r,'Closure'),`Następne bezpieczne: ${cell(r,'Next safe title')||'—'} · Vault ${cell(r,'Vault %')||0}%`)).join('')||v8Empty();
+    }
+    if(balance){
+      const rows=moduleRows('discoveryBalance').slice().sort((a,b)=>String(cell(a,'Scout priority')).localeCompare(String(cell(b,'Scout priority')))).slice(0,7);
+      balance.innerHTML=rows.map(r=>v8Item(cell(r,'Lane'),`${cell(r,'Books')} książek · ${cell(r,'Coverage')}`,cell(r,'Scout priority'),`${cell(r,'Sources')} źródeł · research only`)).join('')||v8Empty();
+    }
+    if(packs){
+      const rows=moduleRows('vaultPacks').slice().sort((a,b)=>(numv(cell(b,'Missing'))||0)-(numv(cell(a,'Missing'))||0)).slice(0,6);
+      packs.innerHTML=rows.map(r=>v8Item(cell(r,'Series'),`${cell(r,'Predecessors')} poprzedników`,`${cell(r,'Missing')} brak`,cell(r,'Trigger title'))).join('')||v8Empty();
+    }
+    if(sentinel){
+      const rows=moduleRows('vaultSentinel').slice(0,6);
+      sentinel.innerHTML=rows.map(r=>v8Item(cell(r,'Folder'),`${cell(r,'EPUB files')} EPUB · metadata ${cell(r,'metadata.json')}`,cell(r,'State')||'REGISTERED',cell(r,'Action')||cell(r,'Match')||'Fizyczny folder zarejestrowany')).join('')||v8Empty();
+    }
+    if(gateway){
+      const rows=moduleRows('translationGateway').slice(0,7);
+      gateway.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`${cell(r,'Market / source language')} · ${cell(r,'Direct readable?')}`,cell(r,'Reading route'),cell(r,'Current access evidence'))).join('')||v8Empty();
+    }
+    if(pipe){
+      const rows=moduleRows('polishEditionPipeline').slice().sort((a,b)=>(numv(cell(a,'Decision Rank'))||999)-(numv(cell(b,'Decision Rank'))||999)).slice(0,7);
+      pipe.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`Decision #${cell(r,'Decision Rank')} · ${cell(r,'Lifecycle')}`,cell(r,'PL route state')||cell(r,'Route')||cell(r,'Gate'),cell(r,'Production action')||cell(r,'Source state'),cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(pipe);
+    }
+    if(quality){
+      const rows=moduleRows('qualityEvidence').filter(r=>String(cell(r,'Signal / claim')||'')).slice(0,8);
+      quality.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`${cell(r,'Lane')} · ${cell(r,'Source type')}`,cell(r,'Source'),cell(r,'Signal / claim'))).join('')||v8Empty();
+    }
+    if(ts){
+      const rows=moduleRows('translationStateReconciler');
+      const drift=rows.filter(r=>/DRIFT|CRITICAL/i.test(String(cell(r,'Drift')||cell(r,'Status')||'')));
+      ts.innerHTML=`<div class="translation-health-card ${drift.length?'warning':'good'}"><strong>${drift.length?drift.length+' rozjazdów':'0 drift'}</strong><span>${drift.length?'sprawdź stan przed publikacją':'stany PL są spójne'}</span></div>`;
+    }
+    if(campaign){
+      const campaigns=moduleRows('readingCampaigns').filter(r=>/^RC-/i.test(String(cell(r,'Campaign ID')||'')));
+      const route=moduleRows('readingCampaignRoute').filter(r=>cell(r,'Narrative unit'));
+      const c=campaigns[0];
+      campaign.innerHTML=c?`<div class="campaign-head"><div><span class="status-pill muted">${esc(cell(c,'State'))}</span><h3>${esc(cell(c,'Campaign'))}</h3><p>${esc(cell(c,'Scope'))} · ${esc(cell(c,'Commitment'))} · next safe: <strong>${esc(cell(c,'Next safe'))}</strong></p></div><small>${esc(cell(c,'Break policy'))}</small></div><div class="campaign-steps">${route.map(r=>`<div class="campaign-step ${String(cell(r,'Type')).toUpperCase()==='NOVELLA'?'soft':''}"><span>${esc(cell(r,'Seq'))}</span><strong>${esc(cell(r,'PL title'))}</strong><small>${esc(cell(r,'Status'))}</small></div>`).join('')}</div><p class="small-note">Narrative volume ≠ fizyczna część wydania. Cosmere poza tą trasą jest opcjonalnym kontekstem, nie pracą domową.</p>`:v8Empty();
+    }
+    if(evolution){
+      const rows=moduleRows('crimeEvolutionAtlas').slice(0,7);
+      evolution.innerHTML=rows.map(r=>v8Item(cell(r,'Title')||cell(r,'Book'),cell(r,'Mutation')||cell(r,'Branch')||cell(r,'Era'),cell(r,'Evidence class')||cell(r,'Relation'),cell(r,'Why it matters')||cell(r,'Evidence'))).join('')||v8Empty('Atlas nie został doczytany.');
+    }
+    if(parole){
+      const rows=moduleRows('paroleBoard').slice(0,6);
+      parole.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`Decision #${cell(r,'Decision Rank')} · Info ${cell(r,'Info Gain')}`,cell(r,'Appeal state')||'REVIEW',cell(r,'Appeal reason')||cell(r,'Why appeal'),cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(parole);
+    }
+    if(delta){
+      const rows=moduleRows('editionDelta').filter(r=>/^ED-/i.test(String(cell(r,'Delta ID')||''))).slice(0,5);
+      delta.innerHTML=rows.map(r=>v8Item(cell(r,'Work'),`${cell(r,'Source lang')} → ${cell(r,'Target lang')}`,cell(r,'Route'),cell(r,'Interpretation')||'QA wydania; skeleton ≠ jakość tłumaczenia')).join('')||v8Empty();
+    }
+  }
+
+  function renderOpenQuestionsV8(){
+    const root=$('#openQuestionsV8'); if(!root)return;
+    const rows=moduleRows('openQuestions').filter(r=>/^OQ-/i.test(String(cell(r,'Open ID')||'')));
+    root.innerHTML=rows.slice(0,10).map(r=>v8Item(cell(r,'Open loop'),`${cell(r,'Lane')} · ${cell(r,'Progress')}`,cell(r,'State'),cell(r,'Evidence class'))).join('')||v8Empty('Brak bezpiecznych otwartych pętli.');
+  }
+
+  function renderLearningLabV8(){
+    const broker=$('#evidenceBrokerV8'), fals=$('#falsificationV8'), collider=$('#tasteColliderV8');
+    if(broker){
+      const rows=moduleRows('evidenceBroker').slice(0,6);
+      broker.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`Decision #${cell(r,'Decision Rank')} · conf ${cell(r,'Confidence')}`,cell(r,'Research action')||cell(r,'Warrant')||'PREP',cell(r,'Why research')||cell(r,'Research target'),cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(broker);
+    }
+    if(fals){
+      const rows=moduleRows('falsificationLab').slice(0,7);
+      fals.innerHTML=rows.map(r=>v8Item(cell(r,'Hypothesis'),`support n=${cell(r,'Support N')} · conf ${cell(r,'Confidence')}`,cell(r,'State')||'OPEN',cell(r,'Falsifier')||`Evidence debt: ${cell(r,'Evidence debt')}`)).join('')||v8Empty();
+    }
+    if(collider){
+      const rows=moduleRows('tasteCollider').filter(r=>/^CT-/i.test(String(cell(r,'Pair ID')||''))).slice(0,5);
+      collider.innerHTML=rows.map(r=>v8Item(`${cell(r,'Book A')} ↔ ${cell(r,'Book B')}`,`Core Δ ${cell(r,'Core Δ')} · ${cell(r,'Shared dims')} wspólnych osi`,cell(r,'State'),cell(r,'Largest contrasts'))).join('')||v8Empty();
+    }
+  }
+
+  function renderPlayground(){
+    const cabinet=$('#crimeCabinetV8'), chem=$('#crimeChemistryV8'), genesis=$('#genesisV8'), wild=$('#wildcardV8'), multi=$('#multiverseV8'), blind=$('#blindLineupV8');
+    if(cabinet){
+      const rows=moduleRows('crimeCabinet').filter(r=>/^COC-/i.test(String(cell(r,'Card ID')||''))).slice(0,8);
+      cabinet.innerHTML=rows.map(r=>v8Item(cell(r,'Card'),cell(r,'Archetype'),cell(r,'Candidate'),cell(r,'Why it exists'),cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(cabinet);
+    }
+    if(chem){
+      const rows=moduleRows('crimeChemistry').filter(r=>/^EL-/i.test(String(cell(r,'Element ID')||''))).slice(0,10);
+      chem.innerHTML=rows.map(r=>v8Item(`${cell(r,'Symbol')} · ${cell(r,'Title')}`,`atomic #${cell(r,'Atomic #')} · Decision ${cell(r,'Decision')}`,cell(r,'Family')||cell(r,'Gate'),cell(r,'Stability')||'Metafora UX; zero score effect',cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(chem);
+    }
+    if(genesis){
+      const rows=moduleRows('genesisTimeCapsule').slice(0,7);
+      genesis.innerHTML=rows.map(r=>v8Item(cell(r,'Title')||cell(r,'Metric')||cell(r,'Book'),cell(r,'Then')||cell(r,'Founding rank')||'',cell(r,'Now')||cell(r,'Current rank')||'',cell(r,'Meaning')||cell(r,'Fate')||'')).join('')||v8Empty();
+    }
+    if(wild){
+      const rows=moduleRows('wildcardReactor').filter(r=>numv(cell(r,'Rank'))!=null).slice(0,6);
+      wild.innerHTML=rows.map(r=>v8Item(cell(r,'Title'),`Core ${cell(r,'Core Fit')} · Info ${cell(r,'Info Gain')}`,cell(r,'Reactor role')||cell(r,'Experimental eligibility'),cell(r,'Notes'),cell(r,'Book ID'))).join('')||v8Empty('Reaktor śpi do następnego cyklu.');
+      wireV8BookLinks(wild);
+    }
+    if(multi){
+      const rows=moduleRows('crimeMultiverse').filter(r=>/^MV-/i.test(String(cell(r,'Universe')||'')));
+      multi.innerHTML=rows.map(r=>v8Item(cell(r,'Persona'),cell(r,"Today's objective"),cell(r,'Nomination'),cell(r,'Why this universe'),cell(r,'Book ID'))).join('')||v8Empty();
+      wireV8BookLinks(multi);
+    }
+    if(blind){
+      const rows=moduleRows('blindLineup').filter(r=>/^SUSPECT /i.test(String(cell(r,'Alias')||'')));
+      blind.innerHTML=rows.map(r=>`<article class="blind-card"><div class="blind-card-top"><strong>${esc(cell(r,'Alias'))}</strong><span>${esc(cell(r,'Journey'))}</span></div><div class="blind-stats"><span>hook <b>${esc(cell(r,'Hook'))}</b></span><span>challenge <b>${esc(cell(r,'Challenge'))}</b></span><span>postacie <b>${esc(cell(r,'Character pull'))}</b></span><span>payoff <b>${esc(cell(r,'Payoff'))}</b></span><span>fun <b>${esc(cell(r,'Fun'))}</b></span><span>depth <b>${esc(cell(r,'Depth'))}</b></span></div></article>`).join('')||v8Empty('Lineup jest zapieczętowany albo moduł nie został doczytany.');
+    }
   }
 
   function openCommand(){
