@@ -8,7 +8,7 @@
   <title>Crime Cockpit</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230b0d10'/%3E%3Cpath d='M22 69 41 29h18l19 40H63l-4-9H40l-4 9Zm23-21h9l-4-11Z' fill='%23d6b36a'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
-  <link rel="stylesheet" href="styles.css?v=7.6.0" />
+  <link rel="stylesheet" href="styles.css?v=8.0.0" />
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="ambient-orb orb-a"></div><div class="ambient-orb orb-b"></div><div class="grain"></div></div>
@@ -75,6 +75,24 @@
 
       <section id="metricGrid" class="metric-grid reveal delay-2" aria-label="Najważniejsze liczby"></section>
 
+      <section class="section-block reveal v8-flight-plan" aria-label="Reading Horizon">
+        <div class="section-heading">
+          <div><div class="section-kicker">READING HORIZON · FLIGHT PLAN</div><h2>Teraz, potem, kiedyś — bez fałszywego super-rankingu</h2></div>
+          <div class="heading-note">CURRENT jest suwerenny. Pozostałe pasy pokazują tylko przygotowane drogi i ich prawdziwe bramki aktywacji.</div>
+        </div>
+        <div id="readingHorizonCards" class="horizon-grid"></div>
+        <div class="split-grid horizon-support">
+          <article class="panel compact-panel">
+            <div class="section-kicker">MISSION CONTROL</div><h3>Co naprawdę wymaga uwagi?</h3>
+            <div id="missionControlStrip" class="v8-list"></div>
+          </article>
+          <article class="panel compact-panel">
+            <div class="section-kicker">PROMISE MEMORY</div><h3>Rzeczy, które sam chcesz kiedyś przeczytać</h3>
+            <div id="readingIntentShelf" class="v8-list"></div>
+          </article>
+        </div>
+      </section>
+
       <section class="section-block reveal">
         <div class="section-heading">
           <div><div class="section-kicker">NASTĘPNE TROPIENIA</div><h2>Co może być następne?</h2></div>
@@ -113,6 +131,25 @@
         <div class="section-heading small"><div><div class="section-kicker">PARETO SHELF</div><h3>Mocne kompromisy bez jednej fałszywie precyzyjnej kolejki</h3></div><span class="status-pill muted">ADVISORY</span></div>
         <div id="paretoShelf" class="queue-cards compact-cards"></div>
       </article>
+
+      <section class="section-block reveal" aria-label="Decision Intelligence v8">
+        <div class="section-heading small">
+          <div><div class="section-kicker">DECISION INTELLIGENCE</div><h2>Dlaczego jeszcze nie teraz — i co trzyma kandydatów wysoko?</h2></div>
+          <span class="status-pill muted">EXPLAIN · NEVER OVERRIDE</span>
+        </div>
+        <div class="v8-grid">
+          <article class="panel"><div class="section-kicker">ALIBI DESK</div><h3>Dlaczego książka jeszcze nie jest następna?</h3><div id="alibiDeskList" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">LOAD-BEARING WALLS</div><h3>Co naprawdę trzyma ją wysoko?</h3><div id="loadBearingList" class="v8-list"></div></article>
+        </div>
+        <div class="v8-grid">
+          <article class="panel"><div class="section-kicker">RANKING TIME MACHINE</div><h3>Co się przesunęło od snapshotu?</h3><div id="rankingTimeMachineList" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">SALA ROZPRAW</div><h3>Najmocniejsza obrona i oskarżenie</h3><div id="trialChamberList" class="v8-list"></div></article>
+        </div>
+        <article class="panel frontier-focus">
+          <div class="section-heading small"><div><div class="section-kicker">READING FRONTIER</div><h3>Jeden challenger spoza kryminału</h3></div><span class="status-pill brass">OPTIONAL LANE</span></div>
+          <div id="readingFrontierCard"></div>
+        </article>
+      </section>
 
       <div class="panel table-panel expert-only reveal"><div class="table-wrap"><table><thead><tr><th>#</th><th>Tytuł</th><th>Autor</th><th>Decision</th><th>Core Fit</th><th>Read Next</th><th>Discovery</th><th>Info Gain</th><th>Session</th><th>Status</th><th>Język</th><th>Ryzyko</th></tr></thead><tbody id="queueBody"></tbody></table></div></div>
     </section>
@@ -156,6 +193,32 @@
             <div id="seriesBackfillSummary" class="metric-grid compact-metrics"></div>
             <div id="seriesBackfillList" class="feature-list"></div>
           </article>
+        </div>
+      </section>
+
+      <section class="section-block reveal" aria-label="Library intelligence batch v8">
+        <div class="section-heading"><div><div class="section-kicker">LIBRARY INTELLIGENCE · v8</div><h2>Serie, dostęp, tłumaczenia i długie kampanie</h2></div><div class="heading-note">Logistyka i research są osobne od jakości książki. Żaden z tych paneli nie daje premii do Read Next.</div></div>
+        <div class="v8-grid three">
+          <article class="panel"><div class="section-kicker">SERIES HEALTH</div><h3>Bezpieczne wejścia i stan serii</h3><div id="seriesHealthV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">DISCOVERY BALANCE</div><h3>Gdzie radar wie za mało?</h3><div id="discoveryBalanceV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">VAULT PACKS</div><h3>Paczki logistyczne serii</h3><div id="vaultPacksV8" class="v8-list"></div></article>
+        </div>
+        <div class="v8-grid">
+          <article class="panel"><div class="section-kicker">VAULT SENTINEL</div><h3>Czy fizyczny Vault zgadza się z rejestrem?</h3><div id="vaultSentinelV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">TRANSLATION INTELLIGENCE</div><h3>Jak książka ma trafić do czytania po polsku?</h3><div id="translationStateV8" class="translation-health"></div><div id="translationGatewayV8" class="v8-list"></div></article>
+        </div>
+        <div class="v8-grid">
+          <article class="panel"><div class="section-kicker">POLISH EDITION PIPELINE</div><h3>Co przygotować zanim wygra wybór?</h3><div id="polishPipelineV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">QUALITY EVIDENCE</div><h3>Dlaczego warto inwestować w dostęp?</h3><div id="qualityEvidenceV8" class="v8-list"></div></article>
+        </div>
+        <article class="panel campaign-panel">
+          <div class="section-heading small"><div><div class="section-kicker">READING CAMPAIGNS · SAGA NAVIGATOR</div><h3>Archiwum Burzowego Światła</h3></div><span class="status-pill muted">PLANNED · ZERO PRESSURE</span></div>
+          <div id="readingCampaignV8"></div>
+        </article>
+        <div class="v8-grid three">
+          <article class="panel"><div class="section-kicker">CRIME EVOLUTION ATLAS</div><h3>Jak mutował gatunek?</h3><div id="crimeEvolutionV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">PAROLE BOARD</div><h3>Kto zasługuje na ponowny przegląd?</h3><div id="paroleBoardV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">EDITION DELTA</div><h3>Czy wydanie zmienia szkielet?</h3><div id="editionDeltaV8" class="v8-list"></div></article>
         </div>
       </section>
 
@@ -296,6 +359,11 @@
         </div>
       </section>
 
+      <section class="section-block reveal">
+        <div class="section-heading small"><div><div class="section-kicker">OPEN QUESTIONS BOARD</div><h2>Co nadal jawnie pozostaje otwarte?</h2></div><span class="status-pill muted">UNKNOWN ≠ SUSPICIOUS</span></div>
+        <article class="panel"><div id="openQuestionsV8" class="v8-list"></div></article>
+      </section>
+
       <div id="readingRoomList" class="timeline reveal"></div>
     </section>
 
@@ -324,6 +392,33 @@
         <article class="panel"><div class="section-kicker">PREDICTION MARKET</div><h3>Prawdopodobieństwa zamiast jednej liczby</h3><div id="predictionMarket" class="feature-list"></div></article>
         <article class="panel"><div class="section-kicker">UNCERTAINTY BUDGET</div><h3>Skąd bierze się brak pewności?</h3><div id="uncertaintyBudget" class="feature-list"></div></article>
       </div>
+
+      <section class="section-block reveal">
+        <div class="section-heading small"><div><div class="section-kicker">LEARNING DESK · v8</div><h2>Co badać, co próbować obalić, co zestawiać?</h2></div><span class="status-pill muted">ADVISORY ONLY</span></div>
+        <div class="v8-grid three">
+          <article class="panel"><div class="section-kicker">EVIDENCE BROKER</div><h3>Jaki research naprawdę ma ROI?</h3><div id="evidenceBrokerV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">FALSIFICATION LAB</div><h3>Co osłabi nasze hipotezy?</h3><div id="falsificationV8" class="v8-list"></div></article>
+          <article class="panel"><div class="section-kicker">TASTE COLLIDER</div><h3>Kontrastowe pary do nauki</h3><div id="tasteColliderV8" class="v8-list"></div></article>
+        </div>
+      </section>
+    </section>
+
+    <section id="playground" class="view" data-view="playground">
+      <div class="section-heading reveal"><div><div class="section-kicker">PLAYGROUND</div><h1>Eksperymenty, które mogą czegoś nauczyć</h1></div><p>Tu wolno być dziwnie. Nadal nie wolno łamać serii, spoilerów ani udawać, że zabawa jest kolejnym rankingiem.</p></div>
+      <div class="v8-grid reveal">
+        <article class="panel"><div class="section-kicker">GABINET OSOBLIWOŚCI</div><h3>Użyteczne absurdy</h3><div id="crimeCabinetV8" class="v8-list"></div></article>
+        <article class="panel"><div class="section-kicker">CRIME CHEMISTRY</div><h3>Układ okresowy kandydatów</h3><div id="crimeChemistryV8" class="v8-list"></div></article>
+      </div>
+      <div class="v8-grid three reveal">
+        <article class="panel"><div class="section-kicker">GENESIS TIME CAPSULE</div><h3>Co zostało z pierwotnych 109?</h3><div id="genesisV8" class="v8-list"></div></article>
+        <article class="panel"><div class="section-kicker">WILDCARD REACTOR</div><h3>Kiedy chaos dostanie głos?</h3><div id="wildcardV8" class="v8-list"></div></article>
+        <article class="panel"><div class="section-kicker">CRIME MULTIVERSE</div><h3>Siedmiu Kamilów, siedem celów</h3><div id="multiverseV8" class="v8-list"></div></article>
+      </div>
+      <article class="panel reveal blind-lineup-v8">
+        <div class="section-heading small"><div><div class="section-kicker">BLIND LINEUP · WITNESS PROTECTION FOR BOOKS</div><h3>Wybór bez tytułu, autora i prestiżu</h3></div><span class="status-pill warning">LOCKED WHILE CURRENT</span></div>
+        <p class="small-note">Publiczny payload zawiera wyłącznie anonimowy profil A:J. Ukryte tożsamości nigdy nie trafiają do frontendu przed ważnym revealem.</p>
+        <div id="blindLineupV8" class="blind-card-grid"></div>
+      </article>
     </section>
 
     <section id="lab" class="view" data-view="lab">
@@ -347,13 +442,13 @@
 
   <dialog id="commandDialog" class="command-dialog"><div class="command-box"><div class="command-search"><span>⌕</span><input id="commandInput" type="search" placeholder="Szukaj książki albo sekcji…" autocomplete="off"/><kbd>ESC</kbd></div><div id="commandResults" class="command-results"></div></div></dialog>
 
-  <dialog id="settingsDialog" class="settings-dialog"><form method="dialog" class="settings-panel" id="settingsForm"><button class="dialog-close" value="cancel" aria-label="Zamknij">×</button><div class="section-kicker">DANE LIVE</div><h2>Połącz z Google Sheets</h2><p>Po jednorazowym wdrożeniu read-only Apps Script v5.3 wkleisz tu adres Web App oraz token. Dane są zapisane wyłącznie lokalnie w tej przeglądarce.</p><label>Web App URL<input id="apiUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label><label>Token<input id="tokenInput" type="password" autocomplete="off" placeholder="CRIME_COCKPIT_TOKEN" /></label><div class="dialog-actions"><button id="clearConfigBtn" class="button ghost" type="button">Wyczyść</button><button class="button primary" value="save">Zapisz i połącz</button></div><small>Bez konfiguracji działa snapshot demonstracyjny.</small></form></dialog>
+  <dialog id="settingsDialog" class="settings-dialog"><form method="dialog" class="settings-panel" id="settingsForm"><button class="dialog-close" value="cancel" aria-label="Zamknij">×</button><div class="section-kicker">DANE LIVE</div><h2>Połącz z Google Sheets</h2><p>Po jednorazowym wdrożeniu read-only Apps Script v5.4 wkleisz tu adres Web App oraz token. Dane są zapisane wyłącznie lokalnie w tej przeglądarce.</p><label>Web App URL<input id="apiUrlInput" type="url" placeholder="https://script.google.com/macros/s/.../exec" /></label><label>Token<input id="tokenInput" type="password" autocomplete="off" placeholder="CRIME_COCKPIT_TOKEN" /></label><div class="dialog-actions"><button id="clearConfigBtn" class="button ghost" type="button">Wyczyść</button><button class="button primary" value="save">Zapisz i połącz</button></div><small>Bez konfiguracji działa snapshot demonstracyjny.</small></form></dialog>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script src="demo-data.js?v=7.6.0"></script>
-  <script src="app.js?v=7.6.0"></script>
-  <!-- deploy-refresh: 2026-09-28T19:50+02:00 / v7.6.0 -->
+  <script src="demo-data.js?v=8.0.0"></script>
+  <script src="app.js?v=8.0.0"></script>
+  <!-- deploy-refresh: 2026-10-08T23:38+02:00 / v8.0.0 -->
 </body>
 </html>
