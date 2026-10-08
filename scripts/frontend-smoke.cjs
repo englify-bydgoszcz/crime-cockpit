@@ -16,10 +16,10 @@ for (const marker of ["const storage = {","storage.get(","storage.set(","storage
   if (!app.includes(marker)) throw new Error('Missing fail-safe storage marker: '+marker);
 }
 for (const marker of [
-  "const FRONTEND_VERSION = '7.6.0'",
-  "styles.css?v=7.6.0",
-  "demo-data.js?v=7.6.0",
-  "app.js?v=7.6.0"
+  "const FRONTEND_VERSION = '8.0.0'",
+  "styles.css?v=8.0.0",
+  "demo-data.js?v=8.0.0",
+  "app.js?v=8.0.0"
 ]) {
   const haystack=marker.includes('FRONTEND_VERSION')?app:index;
   if (!haystack.includes(marker)) throw new Error('Missing release marker: '+marker);
@@ -313,3 +313,36 @@ if (!css.includes('.vault-builder-card{') || !css.includes('.detective-intel-gri
 }
 
 console.log('Crime Cockpit frontend smoke: PASS');
+
+
+// v8 grouped backlog regression guards
+for (const marker of [
+  "id=\"readingHorizonCards\"",
+  "id=\"missionControlStrip\"",
+  "id=\"readingIntentShelf\"",
+  "id=\"readingCampaignV8\"",
+  "id=\"readingFrontierCard\"",
+  "id=\"playground\"",
+  "id=\"blindLineupV8\"",
+  "id=\"openQuestionsV8\"",
+  "id=\"evidenceBrokerV8\""
+]) {
+  if (!index.includes(marker)) throw new Error('Missing v8 owner surface: '+marker);
+}
+for (const marker of [
+  "renderReadingHorizonV8",
+  "renderDecisionIntelligenceV8",
+  "renderLibraryIntelligenceV8",
+  "renderOpenQuestionsV8",
+  "renderLearningLabV8",
+  "renderPlayground",
+  "'readingHorizon'",
+  "'readingCampaigns'",
+  "'readingIntents'",
+  "'blindLineup'"
+]) {
+  if (!app.includes(marker)) throw new Error('Missing v8 renderer/hydration marker: '+marker);
+}
+if (!css.includes('.horizon-grid{') || !css.includes('.blind-card-grid{')) {
+  throw new Error('Missing v8 grouped UI styles.');
+}
