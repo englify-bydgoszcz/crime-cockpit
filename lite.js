@@ -211,6 +211,7 @@
       const next=dom('div','next-preview');
       add(next,dom('p','eyebrow',state.nextVerified?'WYBRANA NASTĘPNA':'NASTĘPNA WSKAZANA PRZEZ API — DO POTWIERDZENIA'));
       add(next,bookCompact(state.next,state.nextVerified?'Zatwierdzona decyzja — nie status czytania':'Stan ze starszego API — potwierdź w arkuszu',true));
+      if(!state.active && state.nextVerified) add(next,button('Zgłoś rozpoczęcie',requestStart,'gold-button'));
       add(root,next);
     } else add(root,dom('p','muted-note','Brak potwierdzonego wyboru następnej lektury w odpowiedzi API.'));
     if(state.lastRead) {
@@ -283,7 +284,17 @@
     } else cast.forEach(r=>{
       const item=dom('article','person-card');
       const name=rowField(r,'Display Name','Character','Canonical Name')||'Postać';
-      add(item,dom('div','person-initials',text(name).split(/\s+/).map(x=>x[0]).slice(0,2).join('')),dom('h3',null,name),
+      const initials=text(name).split(/\s+/).map(x=>x[0]).slice(0,2).join('');
+      const portrait=dom('div','person-initials',initials);
+      const asset=modulesRows('caseFileAssets').find(a=>text(rowField(a,'Character ID'))===text(rowField(r,'Character ID')) && text(rowField(a,'Book ID'))===text(state.castBook));
+      const driveId=text(rowField(asset,'Drive File ID'));
+      if(upper(rowField(asset,'Portrait Status')).includes('READY') && /^[A-Za-z0-9_-]{12,}$/.test(driveId)) {
+        const img=dom('img','person-picture');img.alt='Wizualizacja postaci: '+name;
+        img.loading='lazy';img.referrerPolicy='no-referrer';
+        img.src='https://drive.google.com/thumbnail?id='+encodeURIComponent(driveId)+'&sz=w360';
+        img.addEventListener('error',()=>img.remove());add(portrait,img);
+      }
+      add(item,portrait,dom('h3',null,name),
         dom('p','person-role',rowField(r,'Book Role','Role')||''),
         dom('p',null,rowField(r,'Who is this?','Safe Fact')||'Brak opisu potwierdzonego do checkpointu.'));
       add(root,item);
@@ -354,8 +365,21 @@
     add(content,dom('p','fine-print','Dossier pokazuje wyłącznie dane bibliograficzne. Informacje fabularne są dostępne w sekcji Postacie zgodnie z checkpointem.'));
     dialog.showModal();
   }
+  function requestStart() {
+    if(!state.next || !state.nextVerified) return;
+    $('#finishDialog .eyebrow').textContent='ROZPOCZĘCIE LEKTURY';
+    $('#finishDialog h2').textContent='Zgłoś rozpoczęcie';
+    $('#finishDialog .dialog-body > p:nth-child(3)').textContent='Aplikacja odczytuje dane, ale nie zapisuje ich w arkuszu. Skopiuj wiadomość do czatu, aby potwierdzić rozpoczęcie książki.';
+    $('#finishMessage').value='Rozpocząłem lekturę „'+cardTitle(state.next)+'” — '+text(state.next.author)+'. Zaktualizuj Crime Cockpit.';
+    $('#finishHint').textContent='';
+    $('#finishDialog').showModal();
+  }
   function finishBook() {
     if(!state.active) return;
+    $('#finishDialog .eyebrow').textContent='CASE CLOSED';
+    $('#finishDialog h2').textContent='Zgłoś ukończenie';
+    $('#finishDialog .dialog-body > p:nth-child(3)').textContent='Obecne API jest tylko do odczytu. Skopiuj wiadomość do rozmowy w ChatGPT, aby przeprowadzić debrief i zapisać zakończenie.';
+    $('#finishHint').textContent='';
     const message='Ukończyłem/am „'+cardTitle(state.active)+'” — '+text(state.active.author)+'. Chcę przeprowadzić debrief i zapisać zakończenie w Crime Cockpit.';
     const dialog=$('#finishDialog');
     $('#finishMessage').value=message;
@@ -388,7 +412,7 @@
       state.notice='';
       setHealth('Odpowiedź LIVE','ok');renderAll();
       try {
-        const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots'},16000);
+        const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'},16000);
         if(!extras?.ok) throw new Error('Moduły niedostępne');
         state.modules={...state.modules,...(extras.modules||{})};
         renderPeople();
