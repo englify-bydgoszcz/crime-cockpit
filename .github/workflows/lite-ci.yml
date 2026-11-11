@@ -1,0 +1,17 @@
+name: Crime Cockpit Lite quality
+on:
+  push:
+    branches: [feat/crime-cockpit-lite-2026-11-12]
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  reader-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node scripts/lite-smoke.cjs
