@@ -29,40 +29,21 @@ jobs:
         with:
           enablement: true
 
-      - name: Build code-only Pages artifact
+      - name: Build minimal reader-only Pages artifact
         run: |
           rm -rf dist
           mkdir -p dist
-
-          if [ -f site.zip ]; then
-            unzip -q site.zip -d dist
-          fi
-
           cp index.html dist/index.html
-          cp app.js dist/app.js
-
-          if [ -f styles.css ]; then cp styles.css dist/styles.css; fi
-          if [ -f demo-data.js ]; then cp demo-data.js dist/demo-data.js; fi
-
-          # Private portraits/media remain excluded. Generated owner-safe location visuals are a compiled frontend asset.
-          rm -rf dist/assets
-          if [ -d assets/locations ]; then
-            mkdir -p dist/assets
-            cp -R assets/locations dist/assets/locations
-          fi
-          rm -rf dist/apps-script
-          rm -f dist/site.zip
+          cp lite.js dist/lite.js
+          cp lite.css dist/lite.css
           touch dist/.nojekyll
-
           test -f dist/index.html
-          test -f dist/app.js
-          test -f dist/styles.css
-          test -f dist/demo-data.js
-          test -f dist/assets/locations/bk00002/LOC-0003__Saxby_on_Avon.png
-          test -f dist/assets/locations/bk00002/LOC-0025__Carlottas.png
+          test -f dist/lite.js
+          test -f dist/lite.css
+          test "$(find dist -maxdepth 1 -type f | wc -l)" -eq 4
 
-      - name: Frontend regression smoke
-        run: node scripts/frontend-smoke.cjs
+      - name: Reader frontend smoke
+        run: node scripts/lite-smoke.cjs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v4
