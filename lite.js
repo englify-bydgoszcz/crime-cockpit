@@ -19,7 +19,7 @@
   const state = {
     payload: null, modules: {}, loadedAt: 0, selected: 'now', category: 'all',
     search: '', noteBook: '', castBook: '', active: null, next: null,
-    lastRead: null, issues: [], loading: false
+    lastRead: null, issues: [], notice: '', nextVerified: false, loading: false
   };
   const storage = {
     get(key) { try { return localStorage.getItem(key) || ''; } catch (_) { return ''; } },
@@ -106,6 +106,7 @@
     const explicitNext=explicit.committedNextId || explicit.nextBookId || '';
     const rawNext=books.find(b=>text(b.id)===text(explicitNext)) || payload.current || null;
     state.next=resolvedBook(rawNext);
+    state.nextVerified=!!explicitNext;
     const completed=books.filter(b=>isTrue(b.read) || upper(b.lifecycle)==='READ');
     const completedSorted=completed.slice().sort((a,b)=>text(b.dateCompleted||b.completedAt).localeCompare(text(a.dateCompleted||a.completedAt)));
     const lastId=explicit.lastCompletedId || '';
@@ -115,7 +116,7 @@
     if(activeId && state.active?.id!==activeId) issues.push('Nie znaleziono aktywnej książki wskazanej przez Reader State.');
     if(state.active && state.next && text(state.active.id)===text(state.next.id)) issues.push('API traktuje tę samą książkę jednocześnie jako rozpoczętą i kolejną.');
     if(explicitNext && payload.current?.id && text(explicitNext)!==text(payload.current.id)) issues.push('Reader State i starsze pole current wskazują różne książki.');
-    if(!explicitNext && state.next) issues.push('Pozycja „następna” pochodzi ze starszego pola API i wymaga uzgodnienia z arkuszem.');
+    if(!explicitNext && state.next) issues.push('Pozycja „następna” pochodzi ze starszego pola API. Konieczna kontrola zgodności ze stanem arkusza przed rozpoczęciem.');
     if(!activeId && started.length===0) state.active=null; // Choosing the next book is not proof of starting it.
     if(!state.active && explicit.status==='READING') issues.push('Reader State deklaruje czytanie bez jednoznacznej książki.');
     if(explicit.conflicts?.length) issues.push('Backend zgłosił konflikt źródeł stanu.');
@@ -201,8 +202,8 @@
     }
     if(state.next) {
       const next=dom('div','next-preview');
-      add(next,dom('p','eyebrow','WYBRANA NASTĘPNA'));
-      add(next,bookCompact(state.next,'Decyzja modelu — nie status czytania',true));
+      add(next,dom('p','eyebrow',state.nextVerified?'WYBRANA NASTĘPNA':'NASTĘPNA WSKAZANA PRZEZ API — DO POTWIERDZENIA'));
+      add(next,bookCompact(state.next,state.nextVerified?'Zatwierdzona decyzja — nie status czytania':'Stan ze starszego API — potwierdź w arkuszu',true));
       add(root,next);
     } else add(root,dom('p','muted-note','Brak potwierdzonego wyboru następnej lektury w odpowiedzi API.'));
     if(state.lastRead) {
@@ -316,7 +317,7 @@
     root.replaceChildren();
     if(state.next) {
       add(root,dom('p','eyebrow','JUŻ WYBRANA — NIE ZAMIENIAMY AUTOMATYCZNIE'));
-      add(root,bookCompact(state.next,'Committed Next · z API',true));
+      add(root,bookCompact(state.next,state.nextVerified?'Committed Next · z API':'Wybór z API — do uzgodnienia z arkuszem',true));
     }
     add(root,dom('h3','next-heading','Inne możliwości'));
     const candidates=safeArray(state.payload.candidates)
@@ -324,6 +325,7 @@
       .filter(b=>!isTrue(b.read) && text(b.id)!==text(state.active?.id) && text(b.id)!==text(state.next?.id))
       .slice().sort((a,b)=>(number(a.decisionRank)||999)-(number(b.decisionRank)||999)).slice(0,5);
     if(!candidates.length) add(root,dom('p','empty-state','Brak kandydatów w odpowiedzi silnika.'));
+    if(upper(state.payload?.health?.overall)==='FAIL') add(root,dom('p','muted-note','Uwaga: zdrowie backendu = FAIL. Pokazuję jedynie robocze propozycje; nie podejmuję nowej decyzji, dopóki krytyczne reguły nie przejdą kontroli.'));
     candidates.forEach((b,i)=>{
       const item=dom('article','suggestion');
       add(item,bookCover(b,'small'));
@@ -359,7 +361,8 @@
   function renderAll() {
     renderNow();renderClub();renderPeople();renderLibrary();renderNext();
     $('#lastSync').textContent=state.loadedAt?'Odpowiedź API: '+new Date(state.loadedAt).toLocaleString('pl-PL'):'Brak danych LIVE';
-    if(state.issues.length) showNotice('Uwaga: '+state.issues.join(' ')+' Nie traktuj nieuzgodnionego wyboru jako potwierdzonej bieżącej lektury.');
+    if(state.notice) showNotice(state.notice);
+    else if(state.issues.length) showNotice('Uwaga: '+state.issues.join(' ')+' Nie traktuj nieuzgodnionego wyboru jako potwierdzonej bieżącej lektury.');
     else showNotice('');
     selectView(state.selected);
   }
@@ -367,24 +370,29 @@
     if(state.loading)return;
     const c=config();
     if(!validatedUrl(c.url)||!c.token) {
-      state.payload=null;state.issues=[];setHealth('Brak połączenia','warn');
-      showNotice('Podłącz istniejące API Apps Script w ustawieniach. Publiczne dane demonstracyjne nie zastępują Twojej biblioteki.');
+      state.payload=null;state.issues=[];state.notice='Podłącz istniejące API Apps Script w ustawieniach. Publiczne dane demonstracyjne nie zastępują Twojej biblioteki.';setHealth('Brak połączenia','warn');
       renderAll();return;
     }
     state.loading=true;setHealth('Łączenie…','neutral');
     try {
       const payload=await jsonp(c.url,c.token,{scope:'core'});
       normalize(payload);
+      state.notice='';
       setHealth('Odpowiedź LIVE','ok');renderAll();
-      const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots'},16000);
-      if(extras?.ok) {
+      try {
+        const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots'},16000);
+        if(!extras?.ok) throw new Error('Moduły niedostępne');
         state.modules={...state.modules,...(extras.modules||{})};
         renderPeople();
-      } else setHealth('LIVE · część danych niedostępna','warn');
+      } catch(moduleError) {
+        setHealth('LIVE · część danych niedostępna','warn');
+        state.notice='Główne dane są aktualne, ale część notatek lub postaci może być niedostępna. Odśwież połączenie.';
+        renderAll();
+      }
     } catch(error) {
       state.payload=null;state.modules={};state.active=null;state.next=null;
       setHealth('Dane niedostępne','warn');
-      showNotice('Nie można potwierdzić bieżącego stanu. '+text(error?.message||error)+'. Nie wyświetlam nieaktualnego snapshotu jako aktualnego.');
+      state.notice='Nie można potwierdzić bieżącego stanu. '+text(error?.message||error)+'. Nie wyświetlam nieaktualnego snapshotu jako aktualnego.';
       renderAll();
     } finally {state.loading=false;}
   }
