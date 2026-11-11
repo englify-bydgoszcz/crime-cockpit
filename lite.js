@@ -583,33 +583,44 @@
       normalize(payload);
       state.notice='';
       setHealth('Odpowiedź LIVE','ok');renderAll();
-      try {
-        // Legacy APIs can keep Reading Room in `extras` rather than the core.
-        if(!state.notesLoaded) {
-          try {
-            const archive=await jsonp(c.url,c.token,{scope:'extras'},16000);
-            if(archive?.ok){
-              mergeReaderNotes(state.payload.readingRoom,archive.readingRoom,archive.notes,archive.modules?.readingRoom);
-              if(Array.isArray(archive.library)) {
-                const existing=new Map(state.payload.library.map(b=>[text(b.id),b]));
-                archive.library.forEach(b=>{if(existing.has(text(b.id)))Object.assign(existing.get(text(b.id)),{dateCompleted:b.dateCompleted||existing.get(text(b.id)).dateCompleted,read:b.read??existing.get(text(b.id)).read,rating:b.rating??existing.get(text(b.id)).rating});});
-              }
-              readBookState(state.payload); renderAll();
+
+      const jobs=[
+        {key:'archive',request:{scope:'extras'}},
+        {key:'characters',request:{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'}},
+        {key:'editions',request:{scope:'modules',keys:'editionRegistry,ebookVault,polishEditionPipeline,translationStateReconciler,readyShelf,translationGateway'}}
+      ];
+      const responses=await Promise.all(jobs.map(async job=>{
+        try{return {key:job.key,payload:await jsonp(c.url,c.token,job.request,18000)}}
+        catch(error){return {key:job.key,error};}
+      }));
+      const failed=[];
+      for(const result of responses){
+        if(!result.payload?.ok){failed.push(result.key);continue;}
+        const part=result.payload;
+        state.modules={...state.modules,...(part.modules||{})};
+        if(result.key==='archive') {
+          mergeReaderNotes(state.payload.readingRoom,part.readingRoom,part.notes,part.modules?.readingRoom);
+          if(Array.isArray(part.library)){
+            const index=new Map(state.payload.library.map(b=>[text(b.id),b]));
+            for(const b of part.library){
+              const old=index.get(text(b.id));
+              if(!old)continue;
+              if(!old.dateCompleted && b.dateCompleted)old.dateCompleted=b.dateCompleted;
+              if(old.rating===undefined && b.rating!==undefined)old.rating=b.rating;
             }
-          }catch(archiveError){ console.warn('Reading Room extras unavailable',archiveError); }
-        }
-        const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets,editionRegistry,ebookVault,readyShelf,translationGateway,polishEditionPipeline,translationStateReconciler'},18000);
-        if(!extras?.ok) throw new Error('Moduły niedostępne');
-        state.modules={...state.modules,...(extras.modules||{})};
-        mergeReaderNotes(state.payload.readingRoom,extras.readingRoom,extras.modules?.readingRoom);
-        state.translationsLoaded=['editionRegistry','ebookVault','polishEditionPipeline','translationStateReconciler'].some(k=>modulesRows(k).length>0);
-        readBookState(state.payload);
-        renderAll();
-      } catch(moduleError) {
-        setHealth('LIVE · część danych niedostępna','warn');
-        state.notice='Główne dane są aktualne, ale część notatek, postaci lub danych wydań może być niedostępna. Odśwież połączenie.';
-        renderAll();
+          }
+        }else mergeReaderNotes(state.payload.readingRoom,part.readingRoom,part.modules?.readingRoom);
       }
+      state.translationsLoaded=['editionRegistry','ebookVault','polishEditionPipeline','translationStateReconciler'].some(k=>modulesRows(k).length>0);
+      readBookState(state.payload);
+      if(failed.length){
+        setHealth('LIVE · częściowo','warn');
+        state.notice='Rdzeń danych LIVE działa, ale nie pobrano: '+failed.join(', ')+'. Część historii lub wydań może być niewidoczna.';
+      }else if(!state.notesLoaded){
+        setHealth('LIVE · brak historii','warn');
+        state.notice='Archiwum Reading Room nie dotarło z Apps Script mimo udanego odczytu danych podstawowych. Potrzebna jest korekta serwowanego API.';
+      }
+      renderAll();
     } catch(error) {
       state.payload=null;state.modules={};state.active=null;state.next=null;
       setHealth('Dane niedostępne','warn');
