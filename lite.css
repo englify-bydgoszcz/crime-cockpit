@@ -36,3 +36,28 @@ input,select,textarea{background:#191d25;border:1px solid #484951;border-radius:
 @media(max-width:900px){.layout{grid-template-columns:1fr;gap:1.8rem}.navigation{position:sticky;top:0;z-index:5;flex-direction:row;overflow-x:auto;padding:.6rem 0;border:0;border-bottom:1px solid var(--border);background:#0b0e13ee;scrollbar-width:none}.navigation::-webkit-scrollbar{display:none}.navigation button{flex:0 0 auto;width:auto;padding:.7rem .8rem}.navigation button span{width:auto}.focus-book{grid-template-columns:200px 1fr}}
 @media(max-width:610px){.topbar{padding:1rem}.brand-sign{width:36px;height:36px;font-size:1.35rem}.brand strong{font-size:1.14rem}.brand small{font-size:.59rem}.connection{max-width:110px;overflow:hidden;text-overflow:ellipsis}.icon-button{width:37px;height:37px;font-size:1.1rem}.top-actions{gap:.35rem}.layout{padding:0 1rem 4rem}.navigation{margin:0 -1rem;padding:.4rem 1rem}.navigation button{font-size:.75rem;gap:.3rem}.section-heading{margin-top:1.3rem}.focus-book{grid-template-columns:1fr}.focus-book>.book-art.hero{width:min(190px,60%);min-height:245px;justify-self:center}.focus-title{font-size:2.5rem}.library-controls{flex-direction:column}.library-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.library-item{padding:.65rem}.library-item .book-title{font-size:.98rem}.suggestion{align-items:flex-start;flex-wrap:wrap}.suggestion>.quiet-button{margin-left:auto}.book-row{flex-wrap:wrap}.field-inline{align-items:stretch;flex-direction:column}.field-inline select{width:100%}.footer{padding:1.2rem}}
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
+
+/* Edition / Translation Studio — metadata only, no manuscript text. */
+.translation-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem;margin:0 0 1.7rem}
+.translation-stat{padding:1.25rem 1rem;border:1px solid #424044;border-radius:15px;background:#1a1e25}
+.translation-stat strong{font:1.85rem Georgia,serif;color:var(--gold);display:block;line-height:1.15}
+.translation-stat span{font-size:.71rem;color:var(--muted);display:block;margin-top:.5rem}
+.translation-suggestion{margin-bottom:2rem}
+.translation-suggestion-card{border:1px solid #605139;background:linear-gradient(115deg,#2a261e,#191c26);border-radius:18px;padding:1.5rem}
+.translation-suggestion-card h3{font-family:Georgia,serif;font-size:1.5rem;margin:.25rem 0}
+.translation-suggestion-card p{color:#b9b4ab;font-size:.88rem}
+.translation-suggestion-card .fine-print{margin:0;font-size:.78rem}
+.translation-cards{display:grid;gap:.85rem}
+.translation-entry{border:1px solid #393e48;border-radius:15px;background:#171c25;padding:1rem 1.2rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.translation-entry .book-info{min-width:180px;flex:1}
+.translation-entry .book-title{font-size:1.24rem}
+.translation-entry .book-art.small{width:54px;max-height:81px}
+.translation-entry-info{min-width:135px;display:grid;justify-items:start;gap:.32rem}
+.translation-entry-status{font-size:.72rem;font-weight:750;color:#e2c997;background:#3a3126;border:1px solid #605139;border-radius:20px;padding:.2rem .65rem}
+.translation-entry-status.status-active{color:#b7d8bc;background:#24382c;border-color:#46694c}
+.translation-entry-status.status-private{color:#bad2ec;background:#273343;border-color:#415e7c}
+.translation-entry-status.status-queued{color:#c5b9e6;background:#302941;border-color:#62527d}
+.translation-entry-info small{font-size:.7rem;color:var(--muted);max-width:240px}
+.translation-entry .action-row{margin:0}
+.translation-entry .quiet-button{font-size:.74rem;padding:.55rem .8rem}
+@media(max-width:700px){.translation-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.translation-entry{align-items:flex-start}.translation-entry-info{min-width:120px}.translation-entry .action-row{width:100%}}

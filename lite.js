@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const VERSION = '9.0.0-lite';
+  const VERSION = '9.1.0-lite';
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1_9kUvs64NwUfF03hmq9bjlq94eIgnaXOnjiiFgLRCrU';
   const $ = (s, root=document) => root.querySelector(s);
   const safeArray = value => Array.isArray(value) ? value : [];
@@ -19,7 +19,7 @@
   const state = {
     payload: null, modules: {}, loadedAt: 0, selected: 'now', category: 'all',
     search: '', noteBook: '', castBook: '', active: null, next: null,
-    lastRead: null, issues: [], notice: '', nextVerified: false, loading: false
+    lastRead: null, issues: [], notice: '', nextVerified: false, loading: false, notesLoaded: false, translationsLoaded: false, translationFilter: 'all'
   };
   const storage = {
     get(key) { try { return localStorage.getItem(key) || ''; } catch (_) { return ''; } },
@@ -97,6 +97,47 @@
       return parsed.protocol==='https:' && /^script\.google\.com$|^script\.googleusercontent\.com$/.test(parsed.hostname);
     } catch (_) { return false; }
   }
+
+  function noteFromRow(raw) {
+    if(!raw || typeof raw!=='object') return null;
+    const v=(...keys)=>{for(const key of keys) if(raw[key]!==undefined && raw[key]!==null && raw[key]!=='') return raw[key];return '';};
+    const item={
+      id:text(v('id','noteId','Note ID')),
+      bookId:text(v('bookId','idBook','Book ID','book_id')),
+      title:text(v('title','Tytuł','Title')),
+      timestamp:text(v('timestamp','date','Timestamp','Date','Data')),
+      progress:text(v('progress','Postęp','Progress')),
+      type:text(v('type','Typ','Type')),
+      note:text(v('note','Notatka użytkownika','Notatka','User note','Note')),
+      spoilerPolicy:text(v('spoilerPolicy','Spoiler policy'))
+    };
+    return item.bookId && item.note ? item : null;
+  }
+  function noteRowsFrom(source) {
+    const values=Array.isArray(source)?source:Array.isArray(source?.rows)?source.rows:[];
+    return values.map(noteFromRow).filter(Boolean);
+  }
+  function mergeReaderNotes(...sources) {
+    const merged=new Map();
+    for(const source of [state.payload?.readingRoom,...sources]) for(const note of noteRowsFrom(source)){
+      const key=note.id || [note.bookId,note.timestamp,note.note].join('|');
+      merged.set(key,{...(merged.get(key)||{}),...note});
+    }
+    const out=[...merged.values()].sort((a,b)=>text(a.timestamp).localeCompare(text(b.timestamp)));
+    if(state.payload) state.payload.readingRoom=out;
+    state.notesLoaded=out.length>0;
+    return out;
+  }
+  function sortDate(v) {
+    const t=text(v).trim();
+    const match=t.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+    return match?match[3]+'-'+match[2]+'-'+match[1]+t.slice(10):t;
+  }
+  function latestCompleteSignal(bookId,notes) {
+    return notes.filter(n=>text(n.bookId)===text(bookId) &&
+      /(?:ukończon|zakończon|READ COMPLETE|FINISHED)/i.test(text(n.progress)+' '+text(n.note).slice(0,90)))
+      .map(n=>sortDate(n.timestamp)).sort().pop()||'';
+  }
   function readBookState(payload) {
     const books=safeArray(payload.library);
     const explicit=payload.readerState && typeof payload.readerState==='object' ? payload.readerState : {};
@@ -110,8 +151,10 @@
     state.next=resolvedBook(rawNext);
     state.nextVerified=Boolean(explicitNext || committed.length===1);
     const completed=books.filter(b=>isTrue(b.read) || upper(b.lifecycle)==='READ');
-    const completionDate=b=>text(b.dateCompleted||b.completedAt||b.finishedAt||b.completionDate||b.dateFinished||b.readDate);
+    const notes=noteRowsFrom(payload.readingRoom);
+    const completionDate=b=>sortDate(b.dateCompleted||b.completedAt||b.finishedAt||b.completionDate||b.dateFinished||b.readDate||b.extra?.['Data ukończenia']||latestCompleteSignal(b.id,notes));
     const completedSorted=completed.filter(b=>completionDate(b)).slice().sort((a,b)=>completionDate(b).localeCompare(completionDate(a)));
+    // If the legacy API omitted completion dates, a confirmed post-read Room note is trustworthy timing evidence.
     const lastId=explicit.lastCompletedId || '';
     state.lastRead=resolvedBook(books.find(b=>text(b.id)===text(lastId)) || completedSorted[0] || null);
     const issues=[];
@@ -134,6 +177,7 @@
     if(!Array.isArray(payload.library) || !Array.isArray(payload.candidates)) throw new Error('Brakuje biblioteki lub kandydatów w API.');
     state.payload=payload;
     state.modules=payload.modules||{};
+    mergeReaderNotes(payload.readingRoom,payload.notes,payload.modules?.readingRoom);
     readBookState(payload);
     state.loadedAt=Date.now();
   }
@@ -159,7 +203,7 @@
     return limit!==null && p!==null && p<=limit;
   }
   function selectView(name) {
-    if(!['now','club','people','library','next'].includes(name)) name='now';
+    if(!['now','club','people','library','next','translations'].includes(name)) name='now';
     state.selected=name;
     document.querySelectorAll('[data-view]').forEach(node=>{
       const active=node.dataset.view===name;
@@ -173,6 +217,7 @@
     });
     if(name==='people') renderPeople();
     if(name==='club') renderClub();
+    if(name==='translations') renderTranslations();
     window.scrollTo({top:0,behavior:'instant'});
   }
   function bookCompact(book,badge,action) {
@@ -220,17 +265,28 @@
       add(root,box);
     }
   }
+
   function noteOptions() {
-    const books=safeArray(state.payload?.library);
-    const ids=new Set(safeArray(state.payload?.readingRoom).map(n=>text(n.bookId||n.idBook||'')).filter(Boolean));
-    return books.filter(b=>ids.has(text(b.id)) || isTrue(b.read) || (state.active && text(b.id)===text(state.active.id)));
+    const notes=noteRowsFrom(state.payload?.readingRoom);
+    const ids=new Set(notes.map(n=>n.bookId));
+    const books=safeArray(state.payload?.library).filter(b=>
+      ids.has(text(b.id)) || isTrue(b.read) || upper(b.lifecycle)==='READ' ||
+      (state.active && text(b.id)===text(state.active.id))
+    );
+    // Legacy core can omit an archived book from its abbreviated library payload.
+    for(const n of notes) if(!books.some(b=>text(b.id)===n.bookId)) {
+      const published=safeArray(state.payload?.library).find(b=>text(b.title)===text(n.title));
+      if(published) books.push(published);
+    }
+    return books.sort((a,b)=>{
+      const newest=id=>notes.filter(n=>n.bookId===text(id)).map(n=>n.timestamp).sort().pop()||'';
+      return newest(b.id).localeCompare(newest(a.id));
+    });
   }
   function renderBookSelect(select, books, selectedId, handler) {
     select.replaceChildren();
-    const head=dom('option',null,'Wybierz książkę'); head.value=''; add(select,head);
-    books.forEach(b=>{
-      const opt=dom('option',null,cardTitle(b));opt.value=text(b.id);add(select,opt);
-    });
+    const head=dom('option',null,'Wybierz książkę');head.value='';add(select,head);
+    books.forEach(b=>{const opt=dom('option',null,cardTitle(b));opt.value=text(b.id);add(select,opt);});
     if(selectedId && books.some(b=>text(b.id)===text(selectedId))) select.value=selectedId;
     else if(books.length) select.value=text(books[0].id);
     else select.value='';
@@ -238,23 +294,25 @@
   }
   function renderClub() {
     const root=$('#clubNotes'), select=$('#clubBookSelect');
-    if(!state.payload) {empty(root,'Notatki są dostępne po połączeniu z API.');return;}
+    if(!state.payload) {empty(root,'Notatki będą dostępne po połączeniu z danymi LIVE.');return;}
+    const notes=noteRowsFrom(state.payload.readingRoom);
     const books=noteOptions();
+    if(!state.noteBook && state.lastRead && books.some(b=>text(b.id)===text(state.lastRead.id)))state.noteBook=text(state.lastRead.id);
     renderBookSelect(select,books,state.noteBook,id=>{state.noteBook=id;});
-    const book=byId(state.noteBook);
-    const list=safeArray(state.payload.readingRoom).filter(n=>
-      text(n.bookId||n.idBook)===text(state.noteBook) || (!n.bookId && n.title===book?.title)
-    ).filter(n=>allowedNote(n,book));
+    const book=byId(state.noteBook)||books.find(b=>text(b.id)===text(state.noteBook));
+    const list=notes.filter(n=>n.bookId===text(state.noteBook)||(!n.bookId&&n.title===book?.title))
+      .filter(n=>allowedNote(n,book));
     root.replaceChildren();
-    if(!book) { empty(root,'Brak książki z notatkami.'); return; }
-    if(!isTrue(book.read) && upper(book.lifecycle)!=='READ' && !state.active) {
-      empty(root,'Notatki z tej książki są ukryte do czasu potwierdzenia rozpoczęcia lektury.');
+    if(!book) {empty(root,notes.length?'Nie udało się powiązać notatek z książką.':'Archiwum notatek nie zostało dostarczone przez API. Sprawdź odświeżenie lub zakres integracji Apps Script.');return;}
+    if(!list.length){
+      if(!notes.length) empty(root,'Archiwum Reading Room nie jest dostępne w odpowiedzi API. To problem synchronizacji, a nie brak zapisanych notatek.');
+      else empty(root,'Brak notatek bezpiecznych dla tej książki i jej potwierdzonego checkpointu.');
       return;
     }
-    if(!list.length) { empty(root,'Brak notatek bezpiecznych dla potwierdzonego checkpointu.'); return; }
+    const info=dom('p','muted-note',list.length+' notatek · '+cardTitle(book));add(root,info);
     list.slice().reverse().forEach(n=>{
       const item=dom('article','note-card');
-      add(item,dom('p','eyebrow',([n.type,n.progress,n.date].filter(Boolean).join(' · '))),dom('p','note-body',n.note||''));
+      add(item,dom('p','eyebrow',([n.type,n.progress,n.timestamp].filter(Boolean).join(' · '))),dom('p','note-body',n.note));
       add(root,item);
     });
   }
@@ -390,8 +448,122 @@
     try { await navigator.clipboard.writeText(value); $('#finishHint').textContent='Skopiowano. Wklej wiadomość do czatu, aby przeprowadzić debrief.'; }
     catch (_) { $('#finishMessage').focus();$('#finishMessage').select();$('#finishHint').textContent='Zaznaczony tekst można skopiować ręcznie.'; }
   }
+
+  function translationInventory() {
+    const result=new Map();
+    const books=safeArray(state.payload?.library);
+    const tsr=modulesRows('translationStateReconciler');
+    const pep=modulesRows('polishEditionPipeline');
+    const editions=modulesRows('editionRegistry');
+    const vault=modulesRows('ebookVault');
+    const shelf=modulesRows('readyShelf');
+    const byBook=rows=>new Map(rows.map(r=>[text(rowField(r,'Book ID','bookId')),r]).filter(([id])=>id));
+    const stateById=byBook(tsr), pipelineById=byBook(pep), readyById=byBook(shelf);
+    const matchedVault=vault.filter(r=>upper(rowField(r,'Format'))==='EPUB'&&
+      upper(rowField(r,'Language'))==='PL'&&upper(rowField(r,'Inventory status'))==='MATCHED');
+    const official=b=>upper(b?.language||b?.languageStatus||b?.extra?.['Language Status']).includes('PL OFFICIAL');
+    const ids=new Set([
+      ...books.map(b=>text(b.id)),
+      ...tsr.map(r=>text(rowField(r,'Book ID'))),
+      ...pep.map(r=>text(rowField(r,'Book ID')))
+    ]);
+    for(const id of ids) {
+      if(!id)continue;
+      const book=books.find(b=>text(b.id)===id)||{};
+      const status=stateById.get(id)||{};
+      const production=pipelineById.get(id)||{};
+      const ready=readyById.get(id)||{};
+      const rows=editions.filter(e=>text(rowField(e,'Book ID'))===id);
+      const files=matchedVault.filter(e=>text(rowField(e,'Book ID'))===id);
+      const finalEvidence=rows.some(e=>upper(rowField(e,'Language'))==='PL' && 
+        /FINAL ACCEPTED/.test(upper(rowField(e,'Status'))));
+      const finalByReconciler=/FINAL ACCEPTED/.test(upper(rowField(status,'Canonical state')));
+      const physicalPl=files.length>0;
+      const isFinal=physicalPl && (finalEvidence || finalByReconciler);
+      const work=upper(rowField(status,'Canonical state','Baza TX state')||
+        rowField(production,'Canonical TX state')||book.translationStudioState||book.extra?.['Translation Studio State']);
+      const studioActive=/IN PROGRESS|ACTIVE|DRAFT COMPLETE|TRANSLAT|TX-05|CROSS-BOOK QA/.test(work)&&!/FINAL ACCEPTED/.test(work);
+      const queued=!studioActive && (work.includes('QUEUED') || upper(rowField(production,'Action'))==='TRANSLATE');
+      const isOfficial=official(book)||upper(rowField(production,'Preferred route'))==='OFFICIAL PL';
+      let kind='other',label='';
+      if(studioActive){kind='active';label='W trakcie Translation Studio';}
+      else if(isFinal){kind='private';label='Prywatny przekład PL · gotowy';}
+      else if(queued){kind='queued';label='Tłumaczenie zaplanowane';}
+      else if(isOfficial){kind='official';label='Oficjalne wydanie PL';}
+      if(kind==='other')continue;
+      const name=book?.title||rowField(status,'Title')||rowField(production,'Title')||id;
+      const author=book?.author||rowField(production,'Author')||'';
+      const hints=[rowField(status,'Repair / action'),rowField(production,'Why now')].filter(Boolean);
+      const folderInStatus=text(rowField(status,'Repair / action')).match(/https:\/\/drive\.google\.com\/drive\/folders\/[A-Za-z0-9_-]+/);
+      const rawFile=rowField(files[0],'Drive File ID'), idValid=/^[A-Za-z0-9_-]{12,}$/.test(text(rawFile));
+      const link=idValid?'https://drive.google.com/file/d/'+encodeURIComponent(text(rawFile))+'/view':'';
+      result.set(id,{id,book:{...book,id,title:name,author},kind,label,
+        owned:physicalPl || isTrue(book.vaultEpub)||upper(rowField(production,'Source owned'))==='YES',
+        plOwned:physicalPl|| (isOfficial&&shelf.size && upper(rowField(ready,'Owned language')).includes('PL')),
+        finishedPl:physicalPl,link,folderUrl:folderInStatus?.[0]||'',
+        detail:kind==='active'?rowField(status,'Canonical state')||work:kind==='queued'?rowField(production,'Why now'):kind==='official'?(physicalPl?'Polski EPUB w Twoim Vault':'Oficjalne wydanie; własny plik niepotwierdzony'):rowField(status,'Edition Registry PL state')||'FINAL ACCEPTED',
+        notes:hints.join(' · '),priority:number(rowField(production,'Production Priority'))||0,
+        rank:number(rowField(production,'Decision Rank'))||999,
+        gate:upper(rowField(production,'Gate')),
+        sourceOwned:upper(rowField(production,'Source owned'))==='YES',
+        action:upper(rowField(production,'Action')),
+        investment:upper(rowField(production,'Investment gate')),
+        hasFinalEvidence:finalEvidence||finalByReconciler
+      });
+    }
+    return [...result.values()];
+  }
+  function renderTranslations() {
+    const root=$('#translationCards'), summary=$('#translationSummary'), suggestion=$('#translationSuggestion');
+    if(!root||!summary||!suggestion)return;
+    if(!state.payload){empty(root,'Wydania pojawią się po połączeniu z API.');summary.replaceChildren();suggestion.replaceChildren();return;}
+    const records=translationInventory();
+    const totals={active:0,private:0,official:0,queued:0};
+    records.forEach(r=>{if(r.kind in totals) totals[r.kind]++;});
+    summary.replaceChildren();
+    [['Gotowe prywatne PL',totals.private],['Oficjalne PL',totals.official],['W trakcie Studio',totals.active],['Planowane',totals.queued]]
+      .forEach(([name,value])=>{const item=dom('div','translation-stat');add(item,dom('strong',null,value),dom('span',null,name));add(summary,item);});
+    suggestion.replaceChildren();
+    const next=records.filter(r=>r.kind==='queued' && r.action==='TRANSLATE' && r.gate==='AUTO PASS'&&r.sourceOwned)
+      .sort((a,b)=>b.priority-a.priority||a.rank-b.rank)[0];
+    if(next) {
+      const card=dom('article','translation-suggestion-card');
+      add(card,dom('p','eyebrow',totals.active?'PO ZAKOŃCZENIU BIEŻĄCEGO TX':'NASTĘPNA PROPOZYCJA DO TRANSLATION STUDIO'),
+        dom('h3',null,cardTitle(next.book)),dom('p',null,next.book.author),
+        dom('p',null,'Źródło zarejestrowane w Vault. Plan produkcyjny wskazuje ten tytuł jako kolejny do rozważenia. Przed otwarciem projektu sprawdzamy ponownie dostępność oficjalnego PL, inwestycyjną bramkę jakości i preflight.'));
+      if(next.investment) add(card,dom('p','fine-print','Investment gate: '+next.investment));
+      add(suggestion,card);
+    }else add(suggestion,dom('p','muted-note','Brak potwierdzonego następnego projektu TX w danych silnika. Nie tworzymy sztucznej nominacji.'));
+    const search=text($('#translationSearch')?.value).toLocaleLowerCase('pl').trim();
+    const matches=records.filter(r=>(state.translationFilter==='all'||r.kind===state.translationFilter)&&
+      (!search||[r.book.title,r.book.author].some(v=>text(v).toLocaleLowerCase('pl').includes(search))));
+    const order={active:0,private:1,queued:2,official:3};
+    matches.sort((a,b)=>order[a.kind]-order[b.kind]||a.rank-b.rank||cardTitle(a.book).localeCompare(cardTitle(b.book),'pl'));
+    root.replaceChildren();
+    if(!state.translationsLoaded){
+      add(root,dom('p','muted-note','Statusy z Translation Studio i Ebook Vault nie zostały jeszcze pobrane. Pokazuję wyłącznie to, co wynika z danych podstawowych; brak pozycji nie oznacza braku pliku.'));
+    }
+    const visible=state.translationFilter==='all' && !search ? matches.slice(0,35):matches;
+    if(!visible.length){add(root,dom('p','empty-state','Brak wydań z takim statusem w aktualnie dostępnej części rejestru.'));return;}
+    visible.forEach(r=>{
+      const item=dom('article','translation-entry');
+      add(item,bookCover(r.book,'small'),titleAndAuthor(r.book));
+      const status=dom('div','translation-entry-info');
+      add(status,dom('span','translation-entry-status status-'+r.kind,r.label),
+        dom('small',null,r.detail||''),
+        dom('small',null,r.kind==='private'?'Polski plik EPUB w Vault':r.kind==='active'?'To jeszcze nie jest gotowe wydanie PL':r.kind==='official'?(r.plOwned?'Własna kopia w Vault':'Wydanie katalogowe — stan posiadania niepotwierdzony'):'Produkcja jeszcze się nie rozpoczęła'));
+      add(item,status);
+      const actions=dom('div','action-row');
+      if(r.kind==='private' && r.link) add(actions,button('Otwórz EPUB',()=>window.open(r.link,'_blank','noopener,noreferrer'),'quiet-button'));
+      if(r.kind==='active' && r.folderUrl) add(actions,button('Folder Studio',()=>window.open(r.folderUrl,'_blank','noopener,noreferrer'),'quiet-button'));
+      if(r.book.id && byId(r.book.id)) add(actions,button('Książka',()=>openBook(r.book),'quiet-button'));
+      add(item,actions);add(root,item);
+    });
+    if(visible.length<matches.length) add(root,dom('p','muted-note','Pokazuję pierwsze '+visible.length+' pozycji. Użyj filtra albo wyszukiwarki, aby przejrzeć pozostałe '+(matches.length-visible.length)+'.'));
+  }
+
   function renderAll() {
-    renderNow();renderClub();renderPeople();renderLibrary();renderNext();
+    renderNow();renderClub();renderPeople();renderLibrary();renderNext();renderTranslations();
     $('#lastSync').textContent=state.loadedAt?'Odpowiedź API: '+new Date(state.loadedAt).toLocaleString('pl-PL'):'Brak danych LIVE';
     if(state.notice) showNotice(state.notice);
     else if(state.issues.length) showNotice('Uwaga: '+state.issues.join(' ')+' Nie traktuj nieuzgodnionego wyboru jako potwierdzonej bieżącej lektury.');
@@ -411,16 +583,44 @@
       normalize(payload);
       state.notice='';
       setHealth('Odpowiedź LIVE','ok');renderAll();
-      try {
-        const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'},16000);
-        if(!extras?.ok) throw new Error('Moduły niedostępne');
-        state.modules={...state.modules,...(extras.modules||{})};
-        renderPeople();
-      } catch(moduleError) {
-        setHealth('LIVE · część danych niedostępna','warn');
-        state.notice='Główne dane są aktualne, ale część notatek lub postaci może być niedostępna. Odśwież połączenie.';
-        renderAll();
+
+      const jobs=[
+        {key:'archive',request:{scope:'extras'}},
+        {key:'characters',request:{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'}},
+        {key:'editions',request:{scope:'modules',keys:'editionRegistry,ebookVault,polishEditionPipeline,translationStateReconciler,readyShelf,translationGateway'}}
+      ];
+      const responses=await Promise.all(jobs.map(async job=>{
+        try{return {key:job.key,payload:await jsonp(c.url,c.token,job.request,18000)}}
+        catch(error){return {key:job.key,error};}
+      }));
+      const failed=[];
+      for(const result of responses){
+        if(!result.payload?.ok){failed.push(result.key);continue;}
+        const part=result.payload;
+        state.modules={...state.modules,...(part.modules||{})};
+        if(result.key==='archive') {
+          mergeReaderNotes(state.payload.readingRoom,part.readingRoom,part.notes,part.modules?.readingRoom);
+          if(Array.isArray(part.library)){
+            const index=new Map(state.payload.library.map(b=>[text(b.id),b]));
+            for(const b of part.library){
+              const old=index.get(text(b.id));
+              if(!old)continue;
+              if(!old.dateCompleted && b.dateCompleted)old.dateCompleted=b.dateCompleted;
+              if(old.rating===undefined && b.rating!==undefined)old.rating=b.rating;
+            }
+          }
+        }else mergeReaderNotes(state.payload.readingRoom,part.readingRoom,part.modules?.readingRoom);
       }
+      state.translationsLoaded=['editionRegistry','ebookVault','polishEditionPipeline','translationStateReconciler'].some(k=>modulesRows(k).length>0);
+      readBookState(state.payload);
+      if(failed.length){
+        setHealth('LIVE · częściowo','warn');
+        state.notice='Rdzeń danych LIVE działa, ale nie pobrano: '+failed.join(', ')+'. Część historii lub wydań może być niewidoczna.';
+      }else if(!state.notesLoaded){
+        setHealth('LIVE · brak historii','warn');
+        state.notice='Archiwum Reading Room nie dotarło z Apps Script mimo udanego odczytu danych podstawowych. Potrzebna jest korekta serwowanego API.';
+      }
+      renderAll();
     } catch(error) {
       state.payload=null;state.modules={};state.active=null;state.next=null;
       setHealth('Dane niedostępne','warn');
@@ -448,13 +648,15 @@
     $('#peopleBookSelect').addEventListener('change',event=>{state.castBook=event.target.value;renderPeople();});
     $('#librarySearch').addEventListener('input',event=>{state.search=event.target.value.toLocaleLowerCase('pl').trim();renderLibrary();});
     $('#libraryFilter').addEventListener('change',event=>{state.category=event.target.value;renderLibrary();});
+    $('#translationFilter').addEventListener('change',event=>{state.translationFilter=event.target.value;renderTranslations();});
+    $('#translationSearch').addEventListener('input',renderTranslations);
     $('#bookClose').addEventListener('click',()=>$('#bookDialog').close());
     $('#finishClose').addEventListener('click',()=>$('#finishDialog').close());
     $('#copyFinish').addEventListener('click',copyFinish);
-    $('#sheetLink').href=SHEET_URL;
+    const sheetLink=$('#sheetLink'); if(sheetLink) sheetLink.href=SHEET_URL;
     window.addEventListener('focus',()=>{if(state.loadedAt && Date.now()-state.loadedAt>600000)load();});
     renderAll();load();
   }
   document.addEventListener('DOMContentLoaded',init);
-  window.__crimeLiteTest={readBookState,allowedNote,version:VERSION,state};
+  window.__crimeLiteTest={readBookState,allowedNote,noteFromRow,noteRowsFrom,mergeReaderNotes,latestCompleteSignal,translationInventory,version:VERSION,state};
 })();

@@ -7,7 +7,7 @@
 <meta name="color-scheme" content="dark">
 <meta name="description" content="Crime Cockpit — prywatna biblioteka kryminałów">
 <title>Crime Cockpit — moja biblioteka</title>
-<link rel="stylesheet" href="lite.css?v=9.0.0">
+<link rel="stylesheet" href="lite.css?v=9.1.0">
 </head>
 <body>
 <div class="atmosphere" aria-hidden="true"></div>
@@ -26,6 +26,7 @@
     <button data-nav="club" type="button"><span aria-hidden="true">✎</span> Klub czytelniczy</button>
     <button data-nav="people" type="button"><span aria-hidden="true">♙</span> Postacie</button>
     <button data-nav="library" type="button"><span aria-hidden="true">▤</span> Biblioteka</button>
+    <button data-nav="translations" type="button"><span aria-hidden="true">◇</span> Wydania PL</button>
     <button data-nav="next" type="button"><span aria-hidden="true">✦</span> Co dalej?</button>
   </nav>
   <main class="main">
@@ -56,6 +57,25 @@
       </div>
       <div id="libraryCards" class="library-grid"></div>
     </section>
+    <section data-view="translations" class="view" id="viewTranslations" hidden>
+      <div class="section-heading"><p class="eyebrow">WERSJE JĘZYKOWE</p><h1>Wydania i tłumaczenia</h1>
+        <p>Oficjalne polskie książki, prywatne ukończone przekłady oraz prace w Translation Studio. Status pliku jest oddzielony od decyzji o kolejnej lekturze.</p>
+      </div>
+      <div id="translationSummary" class="translation-summary"></div>
+      <div id="translationSuggestion" class="translation-suggestion"></div>
+      <div class="library-controls">
+        <input id="translationSearch" type="search" aria-label="Szukaj tłumaczeń" placeholder="Tytuł lub autor…">
+        <select id="translationFilter" aria-label="Filtr wydań">
+          <option value="all">Wszystkie statusy</option>
+          <option value="active">Tłumaczone teraz</option>
+          <option value="private">Gotowe prywatne PL</option>
+          <option value="official">Oficjalne wydania PL</option>
+          <option value="queued">Zaplanowane tłumaczenia</option>
+        </select>
+      </div>
+      <div id="translationCards" class="translation-cards"></div>
+      <p class="fine-print">Dane o plikach pochodzą z prywatnych rejestrów Edition Registry i Ebook Vault. FINAL oznacza gotowe wydanie PL tylko przy potwierdzonym pliku, a szkic nie jest e-bookiem do czytania.</p>
+    </section>
     <section data-view="next" class="view" id="viewNext" hidden>
       <div class="section-heading"><p class="eyebrow">POMYSŁY NA POTEM</p><h1>Co dalej?</h1><p>Nowe dane, nowy debrief lub ciekawe odkrycie mogą zmienić tę listę.</p></div>
       <div id="nextCards" class="next-list"></div>
@@ -82,6 +102,6 @@
   <div class="dialog-actions"><button id="copyFinish" class="gold-button" type="button">Kopiuj wiadomość</button><button id="finishClose" class="soft-button" type="button">Zamknij</button></div>
   <p id="finishHint" class="fine-print" aria-live="polite"></p>
 </div></dialog>
-<script src="lite.js?v=9.0.0" defer></script>
+<script src="lite.js?v=9.1.0" defer></script>
 </body>
 </html>

@@ -8,12 +8,12 @@ const js=fs.readFileSync('lite.js','utf8');
 const css=fs.readFileSync('lite.css','utf8');
 
 new Function(js); // Syntax validation
-assert.match(html,/lite\.js\?v=9\.0\.0/);
-assert.match(html,/lite\.css\?v=9\.0\.0/);
+assert.match(html,/lite\.js\?v=9\.1\.0/);
+assert.match(html,/lite\.css\?v=9\.1\.0/);
 assert.doesNotMatch(html,/<script[^>]*src="(?:app|demo-data)\.js/);
 const nav=[...html.matchAll(/data-nav="([^"]+)"/g)].map(m=>m[1]);
-assert.deepEqual(nav,['now','club','people','library','next']);
-for(const selector of ['#connectionStatus','#syncNotice','#nowContent','#clubNotes','#peopleCards','#libraryCards','#nextCards']) {
+assert.deepEqual(nav,['now','club','people','library','translations','next']);
+for(const selector of ['#connectionStatus','#syncNotice','#nowContent','#clubNotes','#peopleCards','#libraryCards','#translationCards','#translationSuggestion','#translationFilter','#nextCards']) {
   assert.ok(html.includes('id="'+selector.slice(1)+'"'),selector);
 }
 assert.ok(css.includes('@media(max-width:610px)'),'mobile layout absent');
@@ -26,7 +26,7 @@ assert.ok(!html.includes('mode-switch'),'legacy owner/expert switch is exposed')
 const win={};
 const document={addEventListener(){}};
 vm.runInNewContext(js,{window:win,document,localStorage:{},console,URL,URLSearchParams,setTimeout,clearTimeout,Date,Number,String,Math,Promise});
-const {readBookState,allowedNote,state}=win.__crimeLiteTest;
+const {readBookState,allowedNote,state,noteFromRow,mergeReaderNotes,translationInventory}=win.__crimeLiteTest;
 assert.ok(readBookState && allowedNote,'test hooks absent');
 
 const baseLibrary=[
@@ -60,4 +60,45 @@ state.payload={library:two,current:null,readerState:{}};
 readBookState(state.payload);
 assert.ok(state.issues.some(x=>x.includes('więcej niż jedną')),'Duplicate next not detected');
 
-console.log('Crime Cockpit Lite smoke: PASS (5 views, no demo, Lifecycle precedence, not-started, conflict, spoiler gates)');
+
+/* Reproduce legacy published payload: finishedAt is supplied by older Apps Script,
+   Reading Room is the canonical archive, not restricted to the current book. */
+const somerset={id:'BK00002',title:'Morderstwa w Somerset',author:'Anthony Horowitz',read:true,lifecycle:'READ',rating:4.5,finishedAt:'2026-11-11T22:10:00+01:00'};
+state.payload={library:[{id:'BK00001',title:'Pięć małych świnek',read:true,lifecycle:'READ',finishedAt:'2026-09-19T10:00:00+02:00'},somerset,baseLibrary[1]],readingRoom:[],current:baseLibrary[1],readerState:{}};
+mergeReaderNotes([
+  {'Note ID':'RR-0043','Book ID':'BK00002','Tytuł':'Morderstwa w Somerset','Timestamp':'2026-11-11 14:29','Postęp':'466 stron','Typ':'QUESTION','Notatka użytkownika':'Proszę przypomnieć mechanizm listu.'},
+  {'Note ID':'RR-0044','Book ID':'BK00002','Tytuł':'Morderstwa w Somerset','Timestamp':'2026-11-11 22:10','Postęp':'ukończona','Typ':'EMOTION','Notatka użytkownika':'Książka ukończona; ocena 4,5/5.'}
+]);
+readBookState(state.payload);
+assert.equal(state.lastRead.id,'BK00002','Somerset must outrank previously completed books');
+assert.equal(state.payload.readingRoom.length,2,'Reading Room notes were dropped');
+assert.equal(allowedNote(state.payload.readingRoom[0],somerset),true,'Completed-book note hidden');
+assert.equal(noteFromRow({bookId:'BK00002',note:'test'}).bookId,'BK00002');
+mergeReaderNotes([{bookId:'BK00002',note:'Książka ukończona',id:'RR-0044',timestamp:'2026-11-11 22:10'}]);
+assert.equal(state.payload.readingRoom.length,2,'Duplicate archive hydration');
+
+state.modules={
+  translationStateReconciler:{rows:[
+    {'Book ID':'BK00117',Title:'The Winter Job','Canonical state':'IN PROGRESS — TX-004 / 41/41 DRAFT','Repair / action':'Source: https://drive.google.com/drive/folders/17XsLC8u5udbNZpQp5v8zz6jqVoMCrrrT'},
+    {'Book ID':'BK00113',Title:'The Death of Us','Canonical state':'QUEUED'}
+  ]},
+  polishEditionPipeline:{rows:[
+    {'Book ID':'BK00117',Title:'The Winter Job',Author:'Antti Tuomainen','Preferred route':'TS→PL','Canonical TX state':'IN PROGRESS','Gate':'AUTO PASS','Source owned':'YES','Action':'CONTINUE TX QA'},
+    {'Book ID':'BK00113',Title:'The Death of Us',Author:'Abigail Dean','Preferred route':'TS→PL','Canonical TX state':'QUEUED','Decision Rank':'5','Gate':'AUTO PASS','Source owned':'YES','Action':'TRANSLATE','Production Priority':'100'},
+    {'Book ID':'BK00116',Title:'Dead Money',Author:'Jakob Kerr','Preferred route':'PRIVATE PL','Canonical TX state':'FINAL ACCEPTED'}
+  ]},
+  editionRegistry:{rows:[
+    {'Book ID':'BK00116','Edition ID':'ED-PL-0116P',Language:'PL',Status:'FINAL ACCEPTED'}
+  ]},
+  ebookVault:{rows:[
+    {'Book ID':'BK00116',Format:'EPUB',Language:'PL','Inventory status':'MATCHED','Drive File ID':'1HMpU6Gcss5trGJw6iQqQ5_Knk8WmzDyK'}
+  ]}
+};
+const trans=translationInventory();
+assert.equal(trans.find(x=>x.id==='BK00117').kind,'active','41/41 draft must not be marked complete');
+assert.equal(trans.find(x=>x.id==='BK00116').kind,'private','Accepted verified private EPUB missing');
+assert.equal(trans.find(x=>x.id==='BK00113').kind,'queued','Next translation queue missing');
+assert.equal(trans.find(x=>x.id==='BK00117').link,'','Active draft must not get final EPUB link');
+assert.equal(win.__crimeLiteTest.version,'9.1.0-lite');
+
+console.log('Crime Cockpit Lite smoke: PASS (6 views, last completed, archived notes, TX status, independent EPUB evidence, spoiler gates)');
