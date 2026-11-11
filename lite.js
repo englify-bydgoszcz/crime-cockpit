@@ -19,7 +19,7 @@
   const state = {
     payload: null, modules: {}, loadedAt: 0, selected: 'now', category: 'all',
     search: '', noteBook: '', castBook: '', active: null, next: null,
-    lastRead: null, issues: [], notice: '', nextVerified: false, loading: false
+    lastRead: null, issues: [], notice: '', nextVerified: false, loading: false, notesLoaded: false, translationsLoaded: false, translationFilter: 'all'
   };
   const storage = {
     get(key) { try { return localStorage.getItem(key) || ''; } catch (_) { return ''; } },
@@ -97,6 +97,47 @@
       return parsed.protocol==='https:' && /^script\.google\.com$|^script\.googleusercontent\.com$/.test(parsed.hostname);
     } catch (_) { return false; }
   }
+
+  function noteFromRow(raw) {
+    if(!raw || typeof raw!=='object') return null;
+    const v=(...keys)=>{for(const key of keys) if(raw[key]!==undefined && raw[key]!==null && raw[key]!=='') return raw[key];return '';};
+    const item={
+      id:text(v('id','noteId','Note ID')),
+      bookId:text(v('bookId','idBook','Book ID','book_id')),
+      title:text(v('title','Tytuł','Title')),
+      timestamp:text(v('timestamp','date','Timestamp','Date','Data')),
+      progress:text(v('progress','Postęp','Progress')),
+      type:text(v('type','Typ','Type')),
+      note:text(v('note','Notatka użytkownika','Notatka','User note','Note')),
+      spoilerPolicy:text(v('spoilerPolicy','Spoiler policy'))
+    };
+    return item.bookId && item.note ? item : null;
+  }
+  function noteRowsFrom(source) {
+    const values=Array.isArray(source)?source:Array.isArray(source?.rows)?source.rows:[];
+    return values.map(noteFromRow).filter(Boolean);
+  }
+  function mergeReaderNotes(...sources) {
+    const merged=new Map();
+    for(const source of sources) for(const note of noteRowsFrom(source)){
+      const key=note.id || [note.bookId,note.timestamp,note.note].join('|');
+      merged.set(key,{...(merged.get(key)||{}),...note});
+    }
+    const out=[...merged.values()].sort((a,b)=>text(a.timestamp).localeCompare(text(b.timestamp)));
+    if(state.payload) state.payload.readingRoom=out;
+    state.notesLoaded=out.length>0;
+    return out;
+  }
+  function sortDate(v) {
+    const t=text(v).trim();
+    const match=t.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+    return match?match[3]+'-'+match[2]+'-'+match[1]+t.slice(10):t;
+  }
+  function latestCompleteSignal(bookId,notes) {
+    return notes.filter(n=>text(n.bookId)===text(bookId) &&
+      /(?:ukończon|zakończon|READ COMPLETE|FINISHED)/i.test(text(n.progress)+' '+text(n.note).slice(0,90)))
+      .map(n=>sortDate(n.timestamp)).sort().pop()||'';
+  }
   function readBookState(payload) {
     const books=safeArray(payload.library);
     const explicit=payload.readerState && typeof payload.readerState==='object' ? payload.readerState : {};
@@ -110,8 +151,10 @@
     state.next=resolvedBook(rawNext);
     state.nextVerified=Boolean(explicitNext || committed.length===1);
     const completed=books.filter(b=>isTrue(b.read) || upper(b.lifecycle)==='READ');
-    const completionDate=b=>text(b.dateCompleted||b.completedAt||b.finishedAt||b.completionDate||b.dateFinished||b.readDate);
+    const notes=noteRowsFrom(payload.readingRoom);
+    const completionDate=b=>sortDate(b.dateCompleted||b.completedAt||b.finishedAt||b.completionDate||b.dateFinished||b.readDate||b.extra?.['Data ukończenia']||latestCompleteSignal(b.id,notes));
     const completedSorted=completed.filter(b=>completionDate(b)).slice().sort((a,b)=>completionDate(b).localeCompare(completionDate(a)));
+    // If the legacy API omitted completion dates, a confirmed post-read Room note is trustworthy timing evidence.
     const lastId=explicit.lastCompletedId || '';
     state.lastRead=resolvedBook(books.find(b=>text(b.id)===text(lastId)) || completedSorted[0] || null);
     const issues=[];
@@ -134,6 +177,7 @@
     if(!Array.isArray(payload.library) || !Array.isArray(payload.candidates)) throw new Error('Brakuje biblioteki lub kandydatów w API.');
     state.payload=payload;
     state.modules=payload.modules||{};
+    mergeReaderNotes(payload.readingRoom,payload.notes,payload.modules?.readingRoom);
     readBookState(payload);
     state.loadedAt=Date.now();
   }
@@ -159,7 +203,7 @@
     return limit!==null && p!==null && p<=limit;
   }
   function selectView(name) {
-    if(!['now','club','people','library','next'].includes(name)) name='now';
+    if(!['now','club','people','library','next','translations'].includes(name)) name='now';
     state.selected=name;
     document.querySelectorAll('[data-view]').forEach(node=>{
       const active=node.dataset.view===name;
@@ -173,6 +217,7 @@
     });
     if(name==='people') renderPeople();
     if(name==='club') renderClub();
+    if(name==='translations') renderTranslations();
     window.scrollTo({top:0,behavior:'instant'});
   }
   function bookCompact(book,badge,action) {
@@ -220,17 +265,28 @@
       add(root,box);
     }
   }
+
   function noteOptions() {
-    const books=safeArray(state.payload?.library);
-    const ids=new Set(safeArray(state.payload?.readingRoom).map(n=>text(n.bookId||n.idBook||'')).filter(Boolean));
-    return books.filter(b=>ids.has(text(b.id)) || isTrue(b.read) || (state.active && text(b.id)===text(state.active.id)));
+    const notes=noteRowsFrom(state.payload?.readingRoom);
+    const ids=new Set(notes.map(n=>n.bookId));
+    const books=safeArray(state.payload?.library).filter(b=>
+      ids.has(text(b.id)) || isTrue(b.read) || upper(b.lifecycle)==='READ' ||
+      (state.active && text(b.id)===text(state.active.id))
+    );
+    // Legacy core can omit an archived book from its abbreviated library payload.
+    for(const n of notes) if(!books.some(b=>text(b.id)===n.bookId)) {
+      const published=safeArray(state.payload?.library).find(b=>text(b.title)===text(n.title));
+      if(published) books.push(published);
+    }
+    return books.sort((a,b)=>{
+      const newest=id=>notes.filter(n=>n.bookId===text(id)).map(n=>n.timestamp).sort().pop()||'';
+      return newest(b.id).localeCompare(newest(a.id));
+    });
   }
   function renderBookSelect(select, books, selectedId, handler) {
     select.replaceChildren();
-    const head=dom('option',null,'Wybierz książkę'); head.value=''; add(select,head);
-    books.forEach(b=>{
-      const opt=dom('option',null,cardTitle(b));opt.value=text(b.id);add(select,opt);
-    });
+    const head=dom('option',null,'Wybierz książkę');head.value='';add(select,head);
+    books.forEach(b=>{const opt=dom('option',null,cardTitle(b));opt.value=text(b.id);add(select,opt);});
     if(selectedId && books.some(b=>text(b.id)===text(selectedId))) select.value=selectedId;
     else if(books.length) select.value=text(books[0].id);
     else select.value='';
@@ -238,23 +294,25 @@
   }
   function renderClub() {
     const root=$('#clubNotes'), select=$('#clubBookSelect');
-    if(!state.payload) {empty(root,'Notatki są dostępne po połączeniu z API.');return;}
+    if(!state.payload) {empty(root,'Notatki będą dostępne po połączeniu z danymi LIVE.');return;}
+    const notes=noteRowsFrom(state.payload.readingRoom);
     const books=noteOptions();
+    if(!state.noteBook && state.lastRead && books.some(b=>text(b.id)===text(state.lastRead.id)))state.noteBook=text(state.lastRead.id);
     renderBookSelect(select,books,state.noteBook,id=>{state.noteBook=id;});
-    const book=byId(state.noteBook);
-    const list=safeArray(state.payload.readingRoom).filter(n=>
-      text(n.bookId||n.idBook)===text(state.noteBook) || (!n.bookId && n.title===book?.title)
-    ).filter(n=>allowedNote(n,book));
+    const book=byId(state.noteBook)||books.find(b=>text(b.id)===text(state.noteBook));
+    const list=notes.filter(n=>n.bookId===text(state.noteBook)||(!n.bookId&&n.title===book?.title))
+      .filter(n=>allowedNote(n,book));
     root.replaceChildren();
-    if(!book) { empty(root,'Brak książki z notatkami.'); return; }
-    if(!isTrue(book.read) && upper(book.lifecycle)!=='READ' && !state.active) {
-      empty(root,'Notatki z tej książki są ukryte do czasu potwierdzenia rozpoczęcia lektury.');
+    if(!book) {empty(root,notes.length?'Nie udało się powiązać notatek z książką.':'Archiwum notatek nie zostało dostarczone przez API. Sprawdź odświeżenie lub zakres integracji Apps Script.');return;}
+    if(!list.length){
+      if(!notes.length) empty(root,'Archiwum Reading Room nie jest dostępne w odpowiedzi API. To problem synchronizacji, a nie brak zapisanych notatek.');
+      else empty(root,'Brak notatek bezpiecznych dla tej książki i jej potwierdzonego checkpointu.');
       return;
     }
-    if(!list.length) { empty(root,'Brak notatek bezpiecznych dla potwierdzonego checkpointu.'); return; }
+    const info=dom('p','muted-note',list.length+' notatek · '+cardTitle(book));add(root,info);
     list.slice().reverse().forEach(n=>{
       const item=dom('article','note-card');
-      add(item,dom('p','eyebrow',([n.type,n.progress,n.date].filter(Boolean).join(' · '))),dom('p','note-body',n.note||''));
+      add(item,dom('p','eyebrow',([n.type,n.progress,n.timestamp].filter(Boolean).join(' · '))),dom('p','note-body',n.note));
       add(root,item);
     });
   }
@@ -412,13 +470,30 @@
       state.notice='';
       setHealth('Odpowiedź LIVE','ok');renderAll();
       try {
-        const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'},16000);
+        // Legacy APIs can keep Reading Room in `extras` rather than the core.
+        if(!state.notesLoaded) {
+          try {
+            const archive=await jsonp(c.url,c.token,{scope:'extras'},16000);
+            if(archive?.ok){
+              mergeReaderNotes(state.payload.readingRoom,archive.readingRoom,archive.notes,archive.modules?.readingRoom);
+              if(Array.isArray(archive.library)) {
+                const existing=new Map(state.payload.library.map(b=>[text(b.id),b]));
+                archive.library.forEach(b=>{if(existing.has(text(b.id)))Object.assign(existing.get(text(b.id)),{dateCompleted:b.dateCompleted||existing.get(text(b.id)).dateCompleted,read:b.read??existing.get(text(b.id)).read,rating:b.rating??existing.get(text(b.id)).rating});});
+              }
+              readBookState(state.payload); renderAll();
+            }
+          }catch(archiveError){ console.warn('Reading Room extras unavailable',archiveError); }
+        }
+        const extras=await jsonp(c.url,c.token,{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets,editionRegistry,ebookVault,readyShelf,translationGateway,polishEditionPipeline,translationStateReconciler'},18000);
         if(!extras?.ok) throw new Error('Moduły niedostępne');
         state.modules={...state.modules,...(extras.modules||{})};
-        renderPeople();
+        mergeReaderNotes(state.payload.readingRoom,extras.readingRoom,extras.modules?.readingRoom);
+        state.translationsLoaded=['editionRegistry','ebookVault','polishEditionPipeline','translationStateReconciler'].some(k=>modulesRows(k).length>0);
+        readBookState(state.payload);
+        renderAll();
       } catch(moduleError) {
         setHealth('LIVE · część danych niedostępna','warn');
-        state.notice='Główne dane są aktualne, ale część notatek lub postaci może być niedostępna. Odśwież połączenie.';
+        state.notice='Główne dane są aktualne, ale część notatek, postaci lub danych wydań może być niedostępna. Odśwież połączenie.';
         renderAll();
       }
     } catch(error) {
