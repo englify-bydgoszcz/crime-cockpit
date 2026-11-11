@@ -653,10 +653,10 @@
     $('#bookClose').addEventListener('click',()=>$('#bookDialog').close());
     $('#finishClose').addEventListener('click',()=>$('#finishDialog').close());
     $('#copyFinish').addEventListener('click',copyFinish);
-    $('#sheetLink').href=SHEET_URL;
+    const sheetLink=$('#sheetLink'); if(sheetLink) sheetLink.href=SHEET_URL;
     window.addEventListener('focus',()=>{if(state.loadedAt && Date.now()-state.loadedAt>600000)load();});
     renderAll();load();
   }
   document.addEventListener('DOMContentLoaded',init);
-  window.__crimeLiteTest={readBookState,allowedNote,version:VERSION,state};
+  window.__crimeLiteTest={readBookState,allowedNote,noteFromRow,noteRowsFrom,mergeReaderNotes,latestCompleteSignal,translationInventory,version:VERSION,state};
 })();
