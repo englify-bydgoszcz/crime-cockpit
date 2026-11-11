@@ -119,7 +119,7 @@
   }
   function mergeReaderNotes(...sources) {
     const merged=new Map();
-    for(const source of sources) for(const note of noteRowsFrom(source)){
+    for(const source of [state.payload?.readingRoom,...sources]) for(const note of noteRowsFrom(source)){
       const key=note.id || [note.bookId,note.timestamp,note.note].join('|');
       merged.set(key,{...(merged.get(key)||{}),...note});
     }
