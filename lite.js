@@ -104,19 +104,25 @@
     const activeId=explicit.activeBookId || explicit.currentlyReadingId || '';
     state.active=resolvedBook(books.find(b=>text(b.id)===text(activeId)) || started[0] || null);
     const explicitNext=explicit.committedNextId || explicit.nextBookId || '';
-    const rawNext=books.find(b=>text(b.id)===text(explicitNext)) || payload.current || null;
+    const committed=books.filter(b=>upper(b.lifecycle)==='CURRENT NEXT' && !isTrue(b.read));
+    // The operational Lifecycle formula outranks the legacy preselected `current` UI field.
+    const rawNext=books.find(b=>text(b.id)===text(explicitNext)) || (committed.length===1?committed[0]:null) || payload.current || null;
     state.next=resolvedBook(rawNext);
-    state.nextVerified=!!explicitNext;
+    state.nextVerified=Boolean(explicitNext || committed.length===1);
     const completed=books.filter(b=>isTrue(b.read) || upper(b.lifecycle)==='READ');
     const completedSorted=completed.slice().sort((a,b)=>text(b.dateCompleted||b.completedAt).localeCompare(text(a.dateCompleted||a.completedAt)));
     const lastId=explicit.lastCompletedId || '';
     state.lastRead=resolvedBook(books.find(b=>text(b.id)===text(lastId)) || completedSorted[0] || null);
     const issues=[];
+    if(committed.length>1) issues.push('Baza ma więcej niż jedną książkę CURRENT NEXT.');
+    if(committed.length===0) issues.push('Nie ma jednoznacznego CURRENT NEXT w danych biblioteki.');
+    if(committed.length===1 && payload.current?.id && text(payload.current.id)!==text(committed[0].id)) issues.push('Starsze pole current w API jest niespójne z Lifecycle — wyświetlam zatwierdzony status Lifecycle.');
+    if(explicitNext && committed.length===1 && text(explicitNext)!==text(committed[0].id)) issues.push('Reader State i Lifecycle wskazują różne książki.');
     if(started.length>1) issues.push('W API występuje więcej niż jedna rozpoczęta książka.');
     if(activeId && state.active?.id!==activeId) issues.push('Nie znaleziono aktywnej książki wskazanej przez Reader State.');
     if(state.active && state.next && text(state.active.id)===text(state.next.id)) issues.push('API traktuje tę samą książkę jednocześnie jako rozpoczętą i kolejną.');
     if(explicitNext && payload.current?.id && text(explicitNext)!==text(payload.current.id)) issues.push('Reader State i starsze pole current wskazują różne książki.');
-    if(!explicitNext && state.next) issues.push('Pozycja „następna” pochodzi ze starszego pola API. Konieczna kontrola zgodności ze stanem arkusza przed rozpoczęciem.');
+    if(!explicitNext && committed.length!==1 && state.next) issues.push('Pozycja „następna” pochodzi ze starszego pola API i wymaga sprawdzenia w arkuszu.');
     if(!activeId && started.length===0) state.active=null; // Choosing the next book is not proof of starting it.
     if(!state.active && explicit.status==='READING') issues.push('Reader State deklaruje czytanie bez jednoznacznej książki.');
     if(explicit.conflicts?.length) issues.push('Backend zgłosił konflikt źródeł stanu.');
