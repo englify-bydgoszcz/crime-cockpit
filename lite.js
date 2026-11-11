@@ -110,7 +110,8 @@
     state.next=resolvedBook(rawNext);
     state.nextVerified=Boolean(explicitNext || committed.length===1);
     const completed=books.filter(b=>isTrue(b.read) || upper(b.lifecycle)==='READ');
-    const completedSorted=completed.slice().sort((a,b)=>text(b.dateCompleted||b.completedAt).localeCompare(text(a.dateCompleted||a.completedAt)));
+    const completionDate=b=>text(b.dateCompleted||b.completedAt||b.finishedAt||b.completionDate||b.dateFinished||b.readDate);
+    const completedSorted=completed.filter(b=>completionDate(b)).slice().sort((a,b)=>completionDate(b).localeCompare(completionDate(a)));
     const lastId=explicit.lastCompletedId || '';
     state.lastRead=resolvedBook(books.find(b=>text(b.id)===text(lastId)) || completedSorted[0] || null);
     const issues=[];
@@ -328,6 +329,7 @@
     add(root,dom('h3','next-heading','Inne możliwości'));
     const candidates=safeArray(state.payload.candidates)
       .filter(b=>!['LOCKED','RETIRE','HOLD'].includes(upper(b.lifecycle)))
+      .filter(b=>!['BLOCK','LOCK','HOLD','FAIL','DEPENDENCY LOCK'].includes(upper(b.eligibility||b.gate||b.recommendationGate||b.preflightVerdict)))
       .filter(b=>!isTrue(b.read) && text(b.id)!==text(state.active?.id) && text(b.id)!==text(state.next?.id))
       .slice().sort((a,b)=>(number(a.decisionRank)||999)-(number(b.decisionRank)||999)).slice(0,5);
     if(!candidates.length) add(root,dom('p','empty-state','Brak kandydatów w odpowiedzi silnika.'));
