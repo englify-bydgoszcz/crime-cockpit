@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const VERSION = '9.0.0-lite';
+  const VERSION = '9.1.0-lite';
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1_9kUvs64NwUfF03hmq9bjlq94eIgnaXOnjiiFgLRCrU';
   const $ = (s, root=document) => root.querySelector(s);
   const safeArray = value => Array.isArray(value) ? value : [];
@@ -448,8 +448,122 @@
     try { await navigator.clipboard.writeText(value); $('#finishHint').textContent='Skopiowano. Wklej wiadomość do czatu, aby przeprowadzić debrief.'; }
     catch (_) { $('#finishMessage').focus();$('#finishMessage').select();$('#finishHint').textContent='Zaznaczony tekst można skopiować ręcznie.'; }
   }
+
+  function translationInventory() {
+    const result=new Map();
+    const books=safeArray(state.payload?.library);
+    const tsr=modulesRows('translationStateReconciler');
+    const pep=modulesRows('polishEditionPipeline');
+    const editions=modulesRows('editionRegistry');
+    const vault=modulesRows('ebookVault');
+    const shelf=modulesRows('readyShelf');
+    const byBook=rows=>new Map(rows.map(r=>[text(rowField(r,'Book ID','bookId')),r]).filter(([id])=>id));
+    const stateById=byBook(tsr), pipelineById=byBook(pep), readyById=byBook(shelf);
+    const matchedVault=vault.filter(r=>upper(rowField(r,'Format'))==='EPUB'&&
+      upper(rowField(r,'Language'))==='PL'&&upper(rowField(r,'Inventory status'))==='MATCHED');
+    const official=b=>upper(b?.language||b?.languageStatus||b?.extra?.['Language Status']).includes('PL OFFICIAL');
+    const ids=new Set([
+      ...books.map(b=>text(b.id)),
+      ...tsr.map(r=>text(rowField(r,'Book ID'))),
+      ...pep.map(r=>text(rowField(r,'Book ID')))
+    ]);
+    for(const id of ids) {
+      if(!id)continue;
+      const book=books.find(b=>text(b.id)===id)||{};
+      const status=stateById.get(id)||{};
+      const production=pipelineById.get(id)||{};
+      const ready=readyById.get(id)||{};
+      const rows=editions.filter(e=>text(rowField(e,'Book ID'))===id);
+      const files=matchedVault.filter(e=>text(rowField(e,'Book ID'))===id);
+      const finalEvidence=rows.some(e=>upper(rowField(e,'Language'))==='PL' && 
+        /FINAL ACCEPTED/.test(upper(rowField(e,'Status'))));
+      const finalByReconciler=/FINAL ACCEPTED/.test(upper(rowField(status,'Canonical state')));
+      const physicalPl=files.length>0;
+      const isFinal=physicalPl && (finalEvidence || finalByReconciler);
+      const work=upper(rowField(status,'Canonical state','Baza TX state')||
+        rowField(production,'Canonical TX state')||book.translationStudioState||book.extra?.['Translation Studio State']);
+      const studioActive=/IN PROGRESS|ACTIVE|DRAFT COMPLETE|TRANSLAT|TX-05|CROSS-BOOK QA/.test(work)&&!/FINAL ACCEPTED/.test(work);
+      const queued=!studioActive && (work.includes('QUEUED') || upper(rowField(production,'Action'))==='TRANSLATE');
+      const isOfficial=official(book)||upper(rowField(production,'Preferred route'))==='OFFICIAL PL';
+      let kind='other',label='';
+      if(studioActive){kind='active';label='W trakcie Translation Studio';}
+      else if(isFinal){kind='private';label='Prywatny przekład PL · gotowy';}
+      else if(queued){kind='queued';label='Tłumaczenie zaplanowane';}
+      else if(isOfficial){kind='official';label='Oficjalne wydanie PL';}
+      if(kind==='other')continue;
+      const name=book?.title||rowField(status,'Title')||rowField(production,'Title')||id;
+      const author=book?.author||rowField(production,'Author')||'';
+      const hints=[rowField(status,'Repair / action'),rowField(production,'Why now')].filter(Boolean);
+      const folderInStatus=text(rowField(status,'Repair / action')).match(/https:\/\/drive\.google\.com\/drive\/folders\/[A-Za-z0-9_-]+/);
+      const rawFile=rowField(files[0],'Drive File ID'), idValid=/^[A-Za-z0-9_-]{12,}$/.test(text(rawFile));
+      const link=idValid?'https://drive.google.com/file/d/'+encodeURIComponent(text(rawFile))+'/view':'';
+      result.set(id,{id,book:{...book,id,title:name,author},kind,label,
+        owned:physicalPl || isTrue(book.vaultEpub)||upper(rowField(production,'Source owned'))==='YES',
+        plOwned:physicalPl|| (isOfficial&&shelf.size && upper(rowField(ready,'Owned language')).includes('PL')),
+        finishedPl:physicalPl,link,folderUrl:folderInStatus?.[0]||'',
+        detail:kind==='active'?rowField(status,'Canonical state')||work:kind==='queued'?rowField(production,'Why now'):kind==='official'?(physicalPl?'Polski EPUB w Twoim Vault':'Oficjalne wydanie; własny plik niepotwierdzony'):rowField(status,'Edition Registry PL state')||'FINAL ACCEPTED',
+        notes:hints.join(' · '),priority:number(rowField(production,'Production Priority'))||0,
+        rank:number(rowField(production,'Decision Rank'))||999,
+        gate:upper(rowField(production,'Gate')),
+        sourceOwned:upper(rowField(production,'Source owned'))==='YES',
+        action:upper(rowField(production,'Action')),
+        investment:upper(rowField(production,'Investment gate')),
+        hasFinalEvidence:finalEvidence||finalByReconciler
+      });
+    }
+    return [...result.values()];
+  }
+  function renderTranslations() {
+    const root=$('#translationCards'), summary=$('#translationSummary'), suggestion=$('#translationSuggestion');
+    if(!root||!summary||!suggestion)return;
+    if(!state.payload){empty(root,'Wydania pojawią się po połączeniu z API.');summary.replaceChildren();suggestion.replaceChildren();return;}
+    const records=translationInventory();
+    const totals={active:0,private:0,official:0,queued:0};
+    records.forEach(r=>{if(r.kind in totals) totals[r.kind]++;});
+    summary.replaceChildren();
+    [['Gotowe prywatne PL',totals.private],['Oficjalne PL',totals.official],['W trakcie Studio',totals.active],['Planowane',totals.queued]]
+      .forEach(([name,value])=>{const item=dom('div','translation-stat');add(item,dom('strong',null,value),dom('span',null,name));add(summary,item);});
+    suggestion.replaceChildren();
+    const next=records.filter(r=>r.kind==='queued' && r.action==='TRANSLATE' && r.gate==='AUTO PASS'&&r.sourceOwned)
+      .sort((a,b)=>b.priority-a.priority||a.rank-b.rank)[0];
+    if(next) {
+      const card=dom('article','translation-suggestion-card');
+      add(card,dom('p','eyebrow',totals.active?'PO ZAKOŃCZENIU BIEŻĄCEGO TX':'NASTĘPNA PROPOZYCJA DO TRANSLATION STUDIO'),
+        dom('h3',null,cardTitle(next.book)),dom('p',null,next.book.author),
+        dom('p',null,'Źródło zarejestrowane w Vault. Plan produkcyjny wskazuje ten tytuł jako kolejny do rozważenia. Przed otwarciem projektu sprawdzamy ponownie dostępność oficjalnego PL, inwestycyjną bramkę jakości i preflight.'));
+      if(next.investment) add(card,dom('p','fine-print','Investment gate: '+next.investment));
+      add(suggestion,card);
+    }else add(suggestion,dom('p','muted-note','Brak potwierdzonego następnego projektu TX w danych silnika. Nie tworzymy sztucznej nominacji.'));
+    const search=text($('#translationSearch')?.value).toLocaleLowerCase('pl').trim();
+    const matches=records.filter(r=>(state.translationFilter==='all'||r.kind===state.translationFilter)&&
+      (!search||[r.book.title,r.book.author].some(v=>text(v).toLocaleLowerCase('pl').includes(search))));
+    const order={active:0,private:1,queued:2,official:3};
+    matches.sort((a,b)=>order[a.kind]-order[b.kind]||a.rank-b.rank||cardTitle(a.book).localeCompare(cardTitle(b.book),'pl'));
+    root.replaceChildren();
+    if(!state.translationsLoaded){
+      add(root,dom('p','muted-note','Statusy z Translation Studio i Ebook Vault nie zostały jeszcze pobrane. Pokazuję wyłącznie to, co wynika z danych podstawowych; brak pozycji nie oznacza braku pliku.'));
+    }
+    const visible=state.translationFilter==='all' && !search ? matches.slice(0,35):matches;
+    if(!visible.length){add(root,dom('p','empty-state','Brak wydań z takim statusem w aktualnie dostępnej części rejestru.'));return;}
+    visible.forEach(r=>{
+      const item=dom('article','translation-entry');
+      add(item,bookCover(r.book,'small'),titleAndAuthor(r.book));
+      const status=dom('div','translation-entry-info');
+      add(status,dom('span','translation-entry-status status-'+r.kind,r.label),
+        dom('small',null,r.detail||''),
+        dom('small',null,r.kind==='private'?'Polski plik EPUB w Vault':r.kind==='active'?'To jeszcze nie jest gotowe wydanie PL':r.kind==='official'?(r.plOwned?'Własna kopia w Vault':'Wydanie katalogowe — stan posiadania niepotwierdzony'):'Produkcja jeszcze się nie rozpoczęła'));
+      add(item,status);
+      const actions=dom('div','action-row');
+      if(r.kind==='private' && r.link) add(actions,button('Otwórz EPUB',()=>window.open(r.link,'_blank','noopener,noreferrer'),'quiet-button'));
+      if(r.kind==='active' && r.folderUrl) add(actions,button('Folder Studio',()=>window.open(r.folderUrl,'_blank','noopener,noreferrer'),'quiet-button'));
+      if(r.book.id && byId(r.book.id)) add(actions,button('Książka',()=>openBook(r.book),'quiet-button'));
+      add(item,actions);add(root,item);
+    });
+    if(visible.length<matches.length) add(root,dom('p','muted-note','Pokazuję pierwsze '+visible.length+' pozycji. Użyj filtra albo wyszukiwarki, aby przejrzeć pozostałe '+(matches.length-visible.length)+'.'));
+  }
+
   function renderAll() {
-    renderNow();renderClub();renderPeople();renderLibrary();renderNext();
+    renderNow();renderClub();renderPeople();renderLibrary();renderNext();renderTranslations();
     $('#lastSync').textContent=state.loadedAt?'Odpowiedź API: '+new Date(state.loadedAt).toLocaleString('pl-PL'):'Brak danych LIVE';
     if(state.notice) showNotice(state.notice);
     else if(state.issues.length) showNotice('Uwaga: '+state.issues.join(' ')+' Nie traktuj nieuzgodnionego wyboru jako potwierdzonej bieżącej lektury.');
@@ -523,6 +637,8 @@
     $('#peopleBookSelect').addEventListener('change',event=>{state.castBook=event.target.value;renderPeople();});
     $('#librarySearch').addEventListener('input',event=>{state.search=event.target.value.toLocaleLowerCase('pl').trim();renderLibrary();});
     $('#libraryFilter').addEventListener('change',event=>{state.category=event.target.value;renderLibrary();});
+    $('#translationFilter').addEventListener('change',event=>{state.translationFilter=event.target.value;renderTranslations();});
+    $('#translationSearch').addEventListener('input',renderTranslations);
     $('#bookClose').addEventListener('click',()=>$('#bookDialog').close());
     $('#finishClose').addEventListener('click',()=>$('#finishDialog').close());
     $('#copyFinish').addEventListener('click',copyFinish);
