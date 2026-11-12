@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const VERSION = '9.2.0-lite';
+  const VERSION = '9.3.0-lite';
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1_9kUvs64NwUfF03hmq9bjlq94eIgnaXOnjiiFgLRCrU';
   const $ = (s, root=document) => root.querySelector(s);
   const safeArray = value => Array.isArray(value) ? value : [];
@@ -607,40 +607,36 @@
       setHealth('Odpowiedź LIVE','ok');renderAll();
 
 
-      // A deployed Apps Script version may omit Reading Room from scope=core and
-      // scope=extras does not expose it in the legacy API. Try legacy full payload
-      // ONLY when core has no notes. Do not save any private notebook data to static assets.
-      let historyAvailable=state.notesLoaded;
-      let legacyProbe='';
-      if(!historyAvailable) {
-        try {
-          const legacy=await jsonp(c.url,c.token,{scope:'full'},25000);
-          if(legacy?.ok) {
-            mergeReaderNotes(legacy.readingRoom,legacy.notes,legacy.modules?.readingRoom);
-            historyAvailable=state.notesLoaded;
-            legacyProbe=historyAvailable?'Legacy full: notatki odebrane':'Legacy full: brak notatek';
-            if(!state.modules || !Object.keys(state.modules).length) state.modules=legacy.modules||{};
-          } else legacyProbe='Legacy full: błąd API';
-        } catch(error) {
-          legacyProbe='Legacy full: brak odpowiedzi ('+text(error?.message||error)+')';
-        }
-      }
+      // Reading Room is personal data. Do not embed its contents in public assets.
+      // Full legacy payload is NOT a valid fallback: it times out on the large
+      // Crime Cockpit workbook. A narrow, header-driven module is necessary.
       const jobs=[
+        ...(state.notesLoaded?[]:[{key:'reader',request:{scope:'modules',keys:'readingRoom'}}]),
         {key:'characters',request:{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'}},
         {key:'editions',request:{scope:'modules',keys:'editionRegistry,ebookVault,polishEditionPipeline,translationStateReconciler,readyShelf,translationGateway'}}
       ];
       const responses=await Promise.all(jobs.map(async job=>{
-        try{return {key:job.key,payload:await jsonp(c.url,c.token,job.request,18000)}}
+        try{return {key:job.key,payload:await jsonp(c.url,c.token,job.request,15000)}}
         catch(error){return {key:job.key,error};}
       }));
-      const failed=[];
+      const failed=[],readerResult=responses.find(r=>r.key==='reader');
       for(const result of responses){
-        if(!result.payload?.ok){failed.push(result.key);continue;}
+        if(!result.payload?.ok){
+          failed.push(result.key);
+          continue;
+        }
         const part=result.payload;
         state.modules={...state.modules,...(part.modules||{})};
-        mergeReaderNotes(part.readingRoom,part.modules?.readingRoom);
+        mergeReaderNotes(part.readingRoom,part.notes,part.modules?.readingRoom);
       }
-      state.notesDiagnostic=legacyProbe;
+      if(!state.notesLoaded){
+        const rr=readerResult?.payload?.modules?.readingRoom;
+        state.notesDiagnostic=readerResult?.error?'Brak odpowiedzi z modułu Reading Room'
+          :rr?.status==='UNAVAILABLE'?'Błąd odczytu karty Reading Room w Apps Script'
+          :rr?.status==='MISSING'?'Brakuje karty Reading Room w podłączonym arkuszu'
+          :rr && Array.isArray(rr.rows)?'Moduł Reading Room odpowiada, lecz zwraca 0 wpisów'
+          :'Opublikowany Apps Script nie udostępnia modułu readingRoom';
+      }else state.notesDiagnostic='';
       state.translationsLoaded=['editionRegistry','ebookVault','polishEditionPipeline','translationStateReconciler'].some(k=>modulesRows(k).length>0);
       readBookState(state.payload);
       if(failed.length){
@@ -648,7 +644,7 @@
         state.notice='Rdzeń danych LIVE działa, ale nie pobrano: '+failed.join(', ')+'. Część historii lub wydań może być niewidoczna.';
       }else if(!state.notesLoaded){
         setHealth('LIVE · brak historii','warn');
-        state.notice='Archiwum Reading Room nie zostało zwrócone przez dostępne tryby API (core + full). '+state.notesDiagnostic+'. Dane w arkuszu istnieją. Do rozwiązania potrzebna jest poprawka publikacji Apps Script.';
+        state.notice='Notatki są zapisane w Google Sheets, ale '+state.notesDiagnostic+'. Wymagana jest aktualizacja istniejącego wdrożenia Apps Script; samo odświeżenie strony nie pomoże.';
       }
       renderAll();
     } catch(error) {
