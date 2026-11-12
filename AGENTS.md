@@ -34,6 +34,18 @@ Every new safe character/appearance update must produce an asset state in the op
 
 The current GitHub Pages Lite is deliberately READ-ONLY and does not require a live conversational model. The interaction is ChatGPT → authenticated Sheets/Drive tool actions → read-only Apps Script feed → presentation in Crime Cockpit. Only perform and claim tool actions available in the current ChatGPT turn. A queued/generated portrait does not become a Drive-ready asset before an actual verified upload. Do not suggest building an embedded chatbot or site message write-back.
 
+## Recommendation system — Council v2 governance
+
+The backend is intentionally far more sophisticated than the frontend; **no achievements, challenges, gamification, vanity dashboards, or additional in-site chat**. For implementation and formula cells see [the live Council v2 audit](docs/recommender-council-v2-2026-11-12.md).
+
+The authoritative book-choice workflow is **ChatGPT → Google Sheets Decision Physics multiobjective Council → Crime Director → fresh quality/series/spoiler/source preflight → one frozen next book after an actual reading debrief**. No other mechanism or static v1 list is sovereign. The Council now has four independently scored lenses (BEST BET, LEARNING PROBE, CONTRAST, EVIDENCE FIRST), explicit scenario disagreement and uncertainty, and a research-only OFF-POOL SERENDIPITY pane to find blind spots outside top25.
+
+**Never optimize for novelty alone.** Read primary and independent quality evidence, including credible negative/mixed evidence and reasons a book might disappoint. Novelty, region, original language, scarcity, awards, low popularity and information value are distinct dimensions; none automatically indicates intrinsic quality. Language friction may affect convenience but not Taste Fit. Don't invent a score for unknown/understudied books.
+
+At 3 completed books treat taste personalization and selector confidence as **EARLY SIGNAL**, not calibrated posterior probabilities. Don't claim Thompson sampling/Bayesian bandits are implemented when the formulas are heuristic scenario comparisons. Do not increase permanent taste weights until observed post-read evidence and appropriate module-specific confidence gates support it. Source freshness and hard series/spoiler continuity override selector priorities. New scout leads never enter Read Next until promoted through duplicate, independent-quality, source, edition and continuity verification.
+
+Every project update requires documented provenance, live-backend readback, an honest integrity report and doc update. Keep the frozen current owner reading intact; most recently Gołoborze BK00114 is in progress at p9. **Do not promote speculative candidates while the owner is reading.**
+
 ## Implementation quality
 
 Use stable Book/Edition/Character/Event IDs, deduplicated writes, provenance, confidence, verification timestamps and stage-based success/failure outcomes. Keep model fit separate from access friction and image availability. Do not change HARD SERIES/SPOILER CONTINUITY constraints. Do not promote provisional in-reading taste signals into stable training until post-read debrief. Monitor actual provider availability, not guessed endpoints.
