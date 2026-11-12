@@ -610,10 +610,13 @@
       // Reading Room is personal data. Do not embed its contents in public assets.
       // Full legacy payload is NOT a valid fallback: it times out on the large
       // Crime Cockpit workbook. A narrow, header-driven module is necessary.
+      // `tasteFrontier` is a known small module across historical API versions.
+      // It prevents older module endpoints from treating unknown keys as a
+      // request to load ALL modules (severe timeout on this large workbook).
       const jobs=[
-        ...(state.notesLoaded?[]:[{key:'reader',request:{scope:'modules',keys:'readingRoom'}}]),
-        {key:'characters',request:{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'}},
-        {key:'editions',request:{scope:'modules',keys:'editionRegistry,ebookVault,polishEditionPipeline,translationStateReconciler,readyShelf,translationGateway'}}
+        ...(state.notesLoaded?[]:[{key:'reader',request:{scope:'modules',keys:'readingRoom,tasteFrontier'}}]),
+        {key:'characters',request:{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets,tasteFrontier'}},
+        {key:'editions',request:{scope:'modules',keys:'editionRegistry,ebookVault,polishEditionPipeline,translationStateReconciler,readyShelf,translationGateway,tasteFrontier'}}
       ];
       const responses=await Promise.all(jobs.map(async job=>{
         try{return {key:job.key,payload:await jsonp(c.url,c.token,job.request,15000)}}
