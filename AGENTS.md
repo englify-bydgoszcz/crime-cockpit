@@ -4,6 +4,8 @@ This file applies to all work in this repository. Refer to [Reading Club Auto-Sy
 
 ## Primary goal
 
+**The owner chats ONLY in ChatGPT (in this project). The Crime Cockpit website must NOT have an embedded chat.** The website is exclusively a reader-friendly, read-only presentation layer; "Klub czytelniczy" is a notebook/history view, not a chat window. ChatGPT executes eligible checkpoint updates via connected tools while responding to messages. No in-app chat or model/backend built solely to handle website messages.
+
 A reader chats naturally about crime novels. The backend, **not the reader**, handles checkpoint identification, safe EPUB prefix verification, normalized note capture, character/relationship/location updates, image evidence, portrait generation and publication, integrity audit, and evidence-informed recommendation learning. Keep the UI minimal and the decision system advanced.
 
 A substantive note from the owner triggers a **checkpoint sync transaction**. Do not wait for explicit instructions like "add characters", "save this note", "make portraits", "write to Sheet", or "sync the source". Ask only a small clarification if needed to avoid spoiler leakage or source mismatch. Do not assert a write, generated image, or deployed update until verified by tools.
@@ -30,7 +32,7 @@ Every new safe character/appearance update must produce an asset state in the op
 
 ## Limitations to state truthfully
 
-The current GitHub Pages Lite is READ-ONLY. It can display notebook/character/asset records received from authenticated Apps Script, but it **cannot** run a live conversational model, automatically write to Sheets, or generate/upload images from a website message. Genuine on-site automation requires an authenticated, write-enabled orchestration backend and media pipeline. Do not conflate a protocol, a mock test, or a successful Pages deploy with end-to-end integration.
+The current GitHub Pages Lite is deliberately READ-ONLY and does not require a live conversational model. The interaction is ChatGPT → authenticated Sheets/Drive tool actions → read-only Apps Script feed → presentation in Crime Cockpit. Only perform and claim tool actions available in the current ChatGPT turn. A queued/generated portrait does not become a Drive-ready asset before an actual verified upload. Do not suggest building an embedded chatbot or site message write-back.
 
 ## Implementation quality
 
