@@ -8,8 +8,8 @@ const js=fs.readFileSync('lite.js','utf8');
 const css=fs.readFileSync('lite.css','utf8');
 
 new Function(js); // Syntax validation
-assert.match(html,/lite\.js\?v=9\.1\.0/);
-assert.match(html,/lite\.css\?v=9\.1\.0/);
+assert.match(html,/lite\.js\?v=9\.2\.0/);
+assert.match(html,/lite\.css\?v=9\.2\.0/);
 assert.doesNotMatch(html,/<script[^>]*src="(?:app|demo-data)\.js/);
 const nav=[...html.matchAll(/data-nav="([^"]+)"/g)].map(m=>m[1]);
 assert.deepEqual(nav,['now','club','people','library','translations','next']);
@@ -26,7 +26,7 @@ assert.ok(!html.includes('mode-switch'),'legacy owner/expert switch is exposed')
 const win={};
 const document={addEventListener(){}};
 vm.runInNewContext(js,{window:win,document,localStorage:{},console,URL,URLSearchParams,setTimeout,clearTimeout,Date,Number,String,Math,Promise});
-const {readBookState,allowedNote,state,noteFromRow,mergeReaderNotes,translationInventory}=win.__crimeLiteTest;
+const {readBookState,allowedNote,state,noteFromRow,mergeReaderNotes,translationInventory,liveReadingEvidence}=win.__crimeLiteTest;
 assert.ok(readBookState && allowedNote,'test hooks absent');
 
 const baseLibrary=[
@@ -99,6 +99,24 @@ assert.equal(trans.find(x=>x.id==='BK00117').kind,'active','41/41 draft must not
 assert.equal(trans.find(x=>x.id==='BK00116').kind,'private','Accepted verified private EPUB missing');
 assert.equal(trans.find(x=>x.id==='BK00113').kind,'queued','Next translation queue missing');
 assert.equal(trans.find(x=>x.id==='BK00117').link,'','Active draft must not get final EPUB link');
-assert.equal(win.__crimeLiteTest.version,'9.1.0-lite');
+assert.equal(win.__crimeLiteTest.version,'9.2.0-lite');
 
+
+const confirmedNotes=[
+  {id:'RR-0045',bookId:'BK00114',title:'Gołoborze',progress:'strona 2',note:'Zaczynam',timestamp:'2026-11-12 08:21'},
+  {id:'RR-0046',bookId:'BK00114',title:'Gołoborze',progress:'9 strona',note:'Przeskoki po epokach',timestamp:'2026-11-12 08:41'}
+];
+state.payload={library:baseLibrary,readingRoom:confirmedNotes,current:baseLibrary[1],readerState:{}};
+readBookState(state.payload);
+assert.equal(state.active?.id,'BK00114','confirmed notebook evidence must mark a book as being read');
+assert.equal(state.next,null,'a started book must no longer be suggested as the next to start');
+assert.equal(state.inferredProgress?.page,9,'latest Gołoborze page checkpoint must show');
+assert.equal(allowedNote({progress:'9 strona'},baseLibrary[1]),true,'checkpoint 9 note must be safe');
+assert.equal(allowedNote({progress:'10 strona'},baseLibrary[1]),false,'future note must remain hidden');
+assert.equal(liveReadingEvidence(baseLibrary[2],confirmedNotes),null,'do not mark unread books as started from unrelated notes');
+state.payload={library:baseLibrary,readingRoom:[],readerState:{}};
+readBookState(state.payload);
+assert.equal(state.active,null,'committed next alone must not imply a started book');
+assert.equal(state.next?.id,'BK00114','committed next should return when there is no progress evidence');
+assert.ok(js.includes("scope:'full'"),'legacy full API rescue path absent');
 console.log('Crime Cockpit Lite smoke: PASS (6 views, last completed, archived notes, TX status, independent EPUB evidence, spoiler gates)');
