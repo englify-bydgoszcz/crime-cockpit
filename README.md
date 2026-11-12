@@ -14,6 +14,15 @@ Every substantive owner reading update should trigger a spoiler-bounded checkpoi
 
 **Workflow:** conversation in ChatGPT → available connectors write and verify Google Sheets/Drive → the website displays the resulting notes, cast, portraits and recommendations. This workflow is invoked in the current ChatGPT turn, not a background agent. GitHub Pages Lite remains read-only **by design**. A queue entry marked READY FOR GENERATION is **not a finished image**.
 
+## Recommender architecture v2
+
+**Priority: a spectacularly capable recommendation engine, not games or UI complexity.** Multiobjective, evidence-aware selectors, an uncertainty-first early learning policy, a dedicated off-pool discovery lane, and grounded external source research live in Google Sheets and ChatGPT. The site remains a small read-only viewer.
+
+- [Counterfactual Council v2 — implemented formulas, live selector linkages, serendipity research lane](docs/recommender-council-v2-2026-11-12.md)
+- [Backend compaction and world-literature discovery audit](docs/backend-compaction-and-serendipity-2026-11-12.md)
+
+The current book and spoiler/series gates are never overridden by novelty or a shadow score. The system must verify independent positive and counter-signals before a new pick; at low owner rating N, scenarios are heuristics rather than calibrated probabilities.
+
 ## Asset policy
 
 Google Drive remains the **canonical master store** for character portraits and other generated reading assets. Asset identity, progress gate, provenance, version and SHA256 live in the operational Google Sheet.
