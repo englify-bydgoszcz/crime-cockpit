@@ -8,8 +8,8 @@ const js=fs.readFileSync('lite.js','utf8');
 const css=fs.readFileSync('lite.css','utf8');
 
 new Function(js); // Syntax validation
-assert.match(html,/lite\.js\?v=9\.3\.0/);
-assert.match(html,/lite\.css\?v=9\.3\.0/);
+assert.match(html,/lite\.js\?v=9\.4\.0/);
+assert.match(html,/lite\.css\?v=9\.4\.0/);
 assert.doesNotMatch(html,/<script[^>]*src="(?:app|demo-data)\.js/);
 const nav=[...html.matchAll(/data-nav="([^"]+)"/g)].map(m=>m[1]);
 assert.deepEqual(nav,['now','club','people','library','translations','next']);
@@ -26,7 +26,7 @@ assert.ok(!html.includes('mode-switch'),'legacy owner/expert switch is exposed')
 const win={};
 const document={addEventListener(){}};
 vm.runInNewContext(js,{window:win,document,localStorage:{},console,URL,URLSearchParams,setTimeout,clearTimeout,Date,Number,String,Math,Promise});
-const {readBookState,allowedNote,state,noteFromRow,mergeReaderNotes,translationInventory,liveReadingEvidence}=win.__crimeLiteTest;
+const {readBookState,allowedNote,state,noteFromRow,mergeReaderNotes,translationInventory,liveReadingEvidence,safeCharacterRow}=win.__crimeLiteTest;
 assert.ok(readBookState && allowedNote,'test hooks absent');
 
 const baseLibrary=[
@@ -99,7 +99,7 @@ assert.equal(trans.find(x=>x.id==='BK00117').kind,'active','41/41 draft must not
 assert.equal(trans.find(x=>x.id==='BK00116').kind,'private','Accepted verified private EPUB missing');
 assert.equal(trans.find(x=>x.id==='BK00113').kind,'queued','Next translation queue missing');
 assert.equal(trans.find(x=>x.id==='BK00117').link,'','Active draft must not get final EPUB link');
-assert.equal(win.__crimeLiteTest.version,'9.3.0-lite');
+assert.equal(win.__crimeLiteTest.version,'9.4.0-lite');
 
 
 const confirmedNotes=[
@@ -129,5 +129,17 @@ state.payload={library:baseLibrary,readingRoom:[],readerState:{}};
 mergeReaderNotes(modulePayload.modules.readingRoom);
 readBookState(state.payload);
 assert.equal(state.active?.id,'BK00114','readingRoom module must establish active book');
+
 assert.equal(state.inferredProgress?.page,9,'readingRoom module must establish checkpoint');
+const cur=baseLibrary.find(b=>b.id==='BK00114');
+const safe=(gate,flag='TRUE')=>({'Safe Now?':flag,'Visibility Gate':gate});
+assert.equal(safeCharacterRow(safe('PUBLIC SAFE'),cur),true,'Catalog names must not require a page marker');
+for (const p of [2,5,6,7,8,9]) assert.equal(safeCharacterRow(safe('CURRENT PROGRESS · p'+p),cur),true,'p'+p+' must be visible at p9');
+for (const p of [10,25]) assert.equal(safeCharacterRow(safe('CURRENT PROGRESS · p'+p),cur),false,'future page '+p+' must remain sealed');
+assert.equal(safeCharacterRow(safe('POST-READ SAFE'),cur),false,'post-read must remain sealed while reading');
+assert.equal(safeCharacterRow(safe('CURRENT PROGRESS'),cur),false,'unknown page must not be guessed');
+assert.equal(safeCharacterRow(safe('PUBLIC SAFE','FALSE'),cur),false,'Safe Now false must remain hidden');
+assert.equal(safeCharacterRow(safe('PUBLIC SAFE'),baseLibrary.find(b=>b.id==='BK00116')),false,'unread other books must remain hidden');
+assert.equal(safeCharacterRow(safe('PUBLIC SAFE'),baseLibrary[0]),true,'completed book public note visible');
+assert.ok(js.includes('modułu bookCast'),'missing character API must be diagnosed, not reported as no characters');
 console.log('Crime Cockpit Lite smoke: PASS (6 views, last completed, archived notes, TX status, independent EPUB evidence, spoiler gates)');
