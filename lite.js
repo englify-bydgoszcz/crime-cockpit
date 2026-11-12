@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const VERSION = '9.3.0-lite';
+  const VERSION = '9.4.0-lite';
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1_9kUvs64NwUfF03hmq9bjlq94eIgnaXOnjiiFgLRCrU';
   const $ = (s, root=document) => root.querySelector(s);
   const safeArray = value => Array.isArray(value) ? value : [];
@@ -338,48 +338,60 @@
       add(root,item);
     });
   }
+  function safeCharacterRow(row,book) {
+    if(!book || !isTrue(rowField(row,'Safe Now?','Safe For Reader?'))) return false;
+    const closed=isTrue(book.read)||upper(book.lifecycle)==='READ';
+    if(closed) return true; // Completed reading: all explicitly safe rows.
+    if(!state.active || text(state.active.id)!==text(book.id)) return false;
+    const visibility=upper(rowField(row,'Visibility Gate','Gate'));
+    if(visibility==='PUBLIC SAFE') return true; // Catalog facts are safe without a page number.
+    if(!visibility.startsWith('CURRENT PROGRESS')) return false; // POST-READ/SEALED stay hidden.
+    const known=number(currentProgress()?.page);
+    const boundary=text(rowField(row,'Safe Through','Visibility Gate','Gate')).match(/(?:\bp(?:age)?\s*|strona\s*|≤\s*p?)(\d+)\b/i);
+    return known!==null && !!boundary && Number(boundary[1])<=known;
+  }
   function renderPeople() {
     const select=$('#peopleBookSelect'), root=$('#peopleCards'), rel=$('#peopleRelations');
     if(!state.payload) {empty(root,'Postacie są dostępne po połączeniu z API.');empty(rel,'');return;}
     const books=safeArray(state.payload.library).filter(b=>isTrue(b.read)||upper(b.lifecycle)==='READ'||(state.active && text(b.id)===text(state.active.id)));
+    if(state.active && !books.some(b=>text(b.id)===text(state.castBook)))state.castBook=text(state.active.id);
     renderBookSelect(select,books,state.castBook,id=>{state.castBook=id;});
     const book=byId(state.castBook);
     const closed=isTrue(book?.read)||upper(book?.lifecycle)==='READ';
     const active=state.active && text(state.active.id)===text(state.castBook);
-    const page=number(currentProgress()?.page);
-    const gate=r=>{
-      if(!closed&&!active) return false;
-      if(!isTrue(rowField(r,'Safe Now?','Safe For Reader?'))) return false;
-      if(active) {
-        const match=text(rowField(r,'Visibility Gate','Safe Through')).match(/(?:p|strona\s*)\s*(\d+)/i);
-        // Require explicit checkpoint for uncompleted books, never infer that all are safe.
-        if(page===null || !match || Number(match[1])>page) return false;
-      }
-      return true;
-    };
-    const cast=modulesRows('bookCast').filter(r=>text(rowField(r,'Book ID'))===text(state.castBook) && gate(r));
+    const cast=modulesRows('bookCast').filter(r=>text(rowField(r,'Book ID'))===text(state.castBook) && safeCharacterRow(r,book));
     root.replaceChildren();rel.replaceChildren();
+    if(!state.modules?.bookCast) {
+      empty(root,'Postacie są zapisane w arkuszu Book Cast, ale obecnie opublikowany Apps Script nie udostępnia modułu bookCast. To problem połączenia, nie brak postaci. Trzeba zarejestrować moduł w moduleSpecs_() i opublikować nową wersję Apps Script.');
+      return;
+    }
     if(!cast.length) {
-      empty(root,active?'Nie ma jeszcze postaci zweryfikowanych do tego checkpointu.':'Nie ma zweryfikowanych postaci dla wybranej książki.');
-    } else cast.forEach(r=>{
-      const item=dom('article','person-card');
-      const name=rowField(r,'Display Name','Character','Canonical Name')||'Postać';
-      const initials=text(name).split(/\s+/).map(x=>x[0]).slice(0,2).join('');
-      const portrait=dom('div','person-initials',initials);
-      const asset=modulesRows('caseFileAssets').find(a=>text(rowField(a,'Character ID'))===text(rowField(r,'Character ID')) && text(rowField(a,'Book ID'))===text(state.castBook));
-      const driveId=text(rowField(asset,'Drive File ID'));
-      if(upper(rowField(asset,'Portrait Status')).includes('READY') && /^[A-Za-z0-9_-]{12,}$/.test(driveId)) {
-        const img=dom('img','person-picture');img.alt='Wizualizacja postaci: '+name;
-        img.loading='lazy';img.referrerPolicy='no-referrer';
-        img.src='https://drive.google.com/thumbnail?id='+encodeURIComponent(driveId)+'&sz=w360';
-        img.addEventListener('error',()=>img.remove());add(portrait,img);
-      }
-      add(item,portrait,dom('h3',null,name),
-        dom('p','person-role',rowField(r,'Book Role','Role')||''),
-        dom('p',null,rowField(r,'Who is this?','Safe Fact')||'Brak opisu potwierdzonego do checkpointu.'));
-      add(root,item);
-    });
-    const relations=modulesRows('characterRelations').filter(r=>text(rowField(r,'Book ID'))===text(state.castBook) && gate(r));
+      empty(root,active?'Nie ma jeszcze postaci z potwierdzonymi, bezspoilerowymi danymi do aktualnego checkpointu.':'Nie ma bezpiecznych kart postaci dla wybranej książki.');
+    } else {
+      if(active) add(root,dom('p','muted-note','Potwierdzony checkpoint: strona '+(currentProgress()?.page||'?')+'. Widać wyłącznie informacje poznane do tego miejsca oraz jawne dane katalogowe.'));
+      cast.forEach(r=>{
+        const item=dom('article','person-card');
+        const name=rowField(r,'Display Name','Character','Canonical Name')||'Postać';
+        const initials=text(name).split(/\s+/).map(x=>x[0]).slice(0,2).join('');
+        const portrait=dom('div','person-initials',initials);
+        const asset=modulesRows('caseFileAssets').find(a=>text(rowField(a,'Character ID'))===text(rowField(r,'Character ID')) && text(rowField(a,'Book ID'))===text(state.castBook));
+        const driveId=text(rowField(asset,'Drive File ID'));
+        // Portrait must have independently verified appearance gate. Being known by
+        // name does NOT mean a future-book portrait is safe for this checkpoint.
+        const assetSafe=closed || (asset && safeCharacterRow({'Safe Now?':'TRUE','Visibility Gate':rowField(asset,'Gate')},book));
+        if(assetSafe && upper(rowField(asset,'Portrait Status')).includes('READY') && /^[A-Za-z0-9_-]{12,}$/.test(driveId)) {
+          const img=dom('img','person-picture');img.alt='Wizualizacja postaci: '+name;
+          img.loading='lazy';img.referrerPolicy='no-referrer';
+          img.src='https://drive.google.com/thumbnail?id='+encodeURIComponent(driveId)+'&sz=w360';
+          img.addEventListener('error',()=>img.remove());add(portrait,img);
+        }
+        add(item,portrait,dom('h3',null,name),
+          dom('p','person-role',rowField(r,'Book Role','Role')||''),
+          dom('p',null,rowField(r,'Who is this?','Safe Fact')||'Brak opisu potwierdzonego do checkpointu.'));
+        add(root,item);
+      });
+    }
+    const relations=modulesRows('characterRelations').filter(r=>text(rowField(r,'Book ID'))===text(state.castBook) && safeCharacterRow(r,book));
     if(relations.length) {
       add(rel,dom('h3',null,'Relacje'));
       relations.forEach(r=>add(rel,dom('p','relation-line',[rowField(r,'From'),rowField(r,'Relation'),rowField(r,'To')].filter(Boolean).join(' · '))));
@@ -687,5 +699,5 @@
     renderAll();load();
   }
   document.addEventListener('DOMContentLoaded',init);
-  window.__crimeLiteTest={readBookState,allowedNote,noteFromRow,noteRowsFrom,mergeReaderNotes,latestCompleteSignal,liveReadingEvidence,translationInventory,version:VERSION,state};
+  window.__crimeLiteTest={readBookState,allowedNote,noteFromRow,noteRowsFrom,mergeReaderNotes,latestCompleteSignal,liveReadingEvidence,safeCharacterRow,translationInventory,version:VERSION,state};
 })();
