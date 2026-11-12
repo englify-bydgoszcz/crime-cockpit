@@ -4,13 +4,15 @@ Living frontend source for the Crime Cockpit project.
 
 ## Reading Club — auto-sync contract
 
+**All conversations are held in ChatGPT, not in the Crime Cockpit website. The website is a read-only viewer. An embedded chatbot is explicitly out of scope.**
+
 Every substantive owner reading update should trigger a spoiler-bounded checkpoint transaction: conversation and note capture, verified exact-edition page boundary, characters and relationships, recall/dossiers, portrait readiness or generation, versioned Google Drive assets, and verification of written data. The owner should not have to operate a manual tagging workflow.
 
 - [Full Reading Club Auto-Sync Contract](docs/reading-club-autosync.md)
 - [Repository agent instructions](AGENTS.md)
 - [Existing Apps Script character/edition module integration](apps-script/character-modules-hotfix.md)
 
-**Current implementation boundary:** GitHub Pages Lite is still read-only; on-site ChatGPT-style conversations and automatic Google Sheets/Drive writeback require an authenticated backend. A queue entry marked READY FOR GENERATION is **not a finished image**.
+**Workflow:** conversation in ChatGPT → available connectors write and verify Google Sheets/Drive → the website displays the resulting notes, cast, portraits and recommendations. This workflow is invoked in the current ChatGPT turn, not a background agent. GitHub Pages Lite remains read-only **by design**. A queue entry marked READY FOR GENERATION is **not a finished image**.
 
 ## Asset policy
 
