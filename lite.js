@@ -4,7 +4,7 @@
  */
 (function () {
   'use strict';
-  const VERSION = '9.1.0-lite';
+  const VERSION = '9.2.0-lite';
   const SHEET_URL = 'https://docs.google.com/spreadsheets/d/1_9kUvs64NwUfF03hmq9bjlq94eIgnaXOnjiiFgLRCrU';
   const $ = (s, root=document) => root.querySelector(s);
   const safeArray = value => Array.isArray(value) ? value : [];
@@ -19,7 +19,7 @@
   const state = {
     payload: null, modules: {}, loadedAt: 0, selected: 'now', category: 'all',
     search: '', noteBook: '', castBook: '', active: null, next: null,
-    lastRead: null, issues: [], notice: '', nextVerified: false, loading: false, notesLoaded: false, translationsLoaded: false, translationFilter: 'all'
+    lastRead: null, issues: [], notice: '', nextVerified: false, loading: false, notesLoaded: false, translationsLoaded: false, translationFilter: 'all', notesDiagnostic: ''
   };
   const storage = {
     get(key) { try { return localStorage.getItem(key) || ''; } catch (_) { return ''; } },
@@ -133,6 +133,21 @@
     const match=t.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
     return match?match[3]+'-'+match[2]+'-'+match[1]+t.slice(10):t;
   }
+
+  function liveReadingEvidence(book,notes) {
+    if(!book || isTrue(book.read) || upper(book.lifecycle)==='READ') return null;
+    const matches=notes.filter(n=>text(n.bookId)===text(book.id));
+    // Evidence must come from the owner's actual in-book progress, not a preselected queue.
+    const confirmed=matches.map(n=>{
+      const match=text(n.progress).match(/(?:^|\b)(?:strona|strony|stron|p\.?|page)?\s*(\d+)\s*(?:strona|strony|stron|str\.|pages?|p\.)?/i);
+      const value=match?Number(match[1]):null;
+      if(value===null || !Number.isFinite(value) || value<1 || value>20000) return null;
+      if(/ukończon|finished|przeczytan/i.test(text(n.progress))) return null;
+      return {page:value,note:n};
+    }).filter(Boolean);
+    if(!confirmed.length)return null;
+    return confirmed.sort((a,b)=>a.page-b.page).pop();
+  }
   function latestCompleteSignal(bookId,notes) {
     return notes.filter(n=>text(n.bookId)===text(bookId) &&
       /(?:ukończon|zakończon|READ COMPLETE|FINISHED)/i.test(text(n.progress)+' '+text(n.note).slice(0,90)))
@@ -143,15 +158,22 @@
     const explicit=payload.readerState && typeof payload.readerState==='object' ? payload.readerState : {};
     const started=books.filter(b=>['READING','CURRENTLY READING','IN PROGRESS','CZYTAM'].includes(upper(b.lifecycle)) || isTrue(b.reading));
     const activeId=explicit.activeBookId || explicit.currentlyReadingId || '';
-    state.active=resolvedBook(books.find(b=>text(b.id)===text(activeId)) || started[0] || null);
+    const notes=noteRowsFrom(payload.readingRoom);
+    const evidence=books.filter(b=>!isTrue(b.read)&&upper(b.lifecycle)!=='READ').map(b=>({book:b,signal:liveReadingEvidence(b,notes)})).filter(x=>x.signal);
+    const selected=books.filter(b=>upper(b.lifecycle)==='CURRENT NEXT');
+    const readingFromNotes=evidence.filter(x=>selected.some(c=>text(c.id)===text(x.book.id)));
+    const inferred=readingFromNotes.length===1 ? readingFromNotes[0]:null;
+    state.active=resolvedBook(books.find(b=>text(b.id)===text(activeId)) || started[0] || inferred?.book || null);
+    state.inferredProgress=inferred?.signal ? {page:inferred.signal.page,label:'Strona '+inferred.signal.page+' · potwierdzona w Reading Room'}:null;
     const explicitNext=explicit.committedNextId || explicit.nextBookId || '';
     const committed=books.filter(b=>upper(b.lifecycle)==='CURRENT NEXT' && !isTrue(b.read));
     // The operational Lifecycle formula outranks the legacy preselected `current` UI field.
     const rawNext=books.find(b=>text(b.id)===text(explicitNext)) || (committed.length===1?committed[0]:null) || payload.current || null;
     state.next=resolvedBook(rawNext);
     state.nextVerified=Boolean(explicitNext || committed.length===1);
+    // CURRENT NEXT remains a historical committed decision after the owner logs real reading progress.
+    if(state.active && state.next && text(state.active.id)===text(state.next.id)) {state.next=null;state.nextVerified=false;}
     const completed=books.filter(b=>isTrue(b.read) || upper(b.lifecycle)==='READ');
-    const notes=noteRowsFrom(payload.readingRoom);
     const completionDate=b=>sortDate(b.dateCompleted||b.completedAt||b.finishedAt||b.completionDate||b.dateFinished||b.readDate||b.extra?.['Data ukończenia']||latestCompleteSignal(b.id,notes));
     const completedSorted=completed.filter(b=>completionDate(b)).slice().sort((a,b)=>completionDate(b).localeCompare(completionDate(a)));
     // If the legacy API omitted completion dates, a confirmed post-read Room note is trustworthy timing evidence.
@@ -167,7 +189,7 @@
     if(state.active && state.next && text(state.active.id)===text(state.next.id)) issues.push('API traktuje tę samą książkę jednocześnie jako rozpoczętą i kolejną.');
     if(explicitNext && payload.current?.id && text(explicitNext)!==text(payload.current.id)) issues.push('Reader State i starsze pole current wskazują różne książki.');
     if(!explicitNext && committed.length!==1 && state.next) issues.push('Pozycja „następna” pochodzi ze starszego pola API i wymaga sprawdzenia w arkuszu.');
-    if(!activeId && started.length===0) state.active=null; // Choosing the next book is not proof of starting it.
+    if(!activeId && started.length===0 && !inferred) state.active=null; // Selection alone is not evidence.
     if(!state.active && explicit.status==='READING') issues.push('Reader State deklaruje czytanie bez jednoznacznej książki.');
     if(explicit.conflicts?.length) issues.push('Backend zgłosił konflikt źródeł stanu.');
     state.issues=issues;
@@ -189,7 +211,7 @@
   function currentProgress() {
     const s=state.payload?.readerState||{};
     if(!state.active) return null;
-    const progress=s.progress||state.active.progress||null;
+    const progress=s.progress||state.active.progress||state.inferredProgress||null;
     if(typeof progress==='object' && progress!==null) return progress;
     return progress ? {label:text(progress)} : null;
   }
@@ -584,8 +606,26 @@
       state.notice='';
       setHealth('Odpowiedź LIVE','ok');renderAll();
 
+
+      // A deployed Apps Script version may omit Reading Room from scope=core and
+      // scope=extras does not expose it in the legacy API. Try legacy full payload
+      // ONLY when core has no notes. Do not save any private notebook data to static assets.
+      let historyAvailable=state.notesLoaded;
+      let legacyProbe='';
+      if(!historyAvailable) {
+        try {
+          const legacy=await jsonp(c.url,c.token,{scope:'full'},25000);
+          if(legacy?.ok) {
+            mergeReaderNotes(legacy.readingRoom,legacy.notes,legacy.modules?.readingRoom);
+            historyAvailable=state.notesLoaded;
+            legacyProbe=historyAvailable?'Legacy full: notatki odebrane':'Legacy full: brak notatek';
+            if(!state.modules || !Object.keys(state.modules).length) state.modules=legacy.modules||{};
+          } else legacyProbe='Legacy full: błąd API';
+        } catch(error) {
+          legacyProbe='Legacy full: brak odpowiedzi ('+text(error?.message||error)+')';
+        }
+      }
       const jobs=[
-        {key:'archive',request:{scope:'extras'}},
         {key:'characters',request:{scope:'modules',keys:'bookCast,characterRelations,checkpointSnapshots,caseFileAssets'}},
         {key:'editions',request:{scope:'modules',keys:'editionRegistry,ebookVault,polishEditionPipeline,translationStateReconciler,readyShelf,translationGateway'}}
       ];
@@ -598,19 +638,9 @@
         if(!result.payload?.ok){failed.push(result.key);continue;}
         const part=result.payload;
         state.modules={...state.modules,...(part.modules||{})};
-        if(result.key==='archive') {
-          mergeReaderNotes(state.payload.readingRoom,part.readingRoom,part.notes,part.modules?.readingRoom);
-          if(Array.isArray(part.library)){
-            const index=new Map(state.payload.library.map(b=>[text(b.id),b]));
-            for(const b of part.library){
-              const old=index.get(text(b.id));
-              if(!old)continue;
-              if(!old.dateCompleted && b.dateCompleted)old.dateCompleted=b.dateCompleted;
-              if(old.rating===undefined && b.rating!==undefined)old.rating=b.rating;
-            }
-          }
-        }else mergeReaderNotes(state.payload.readingRoom,part.readingRoom,part.modules?.readingRoom);
+        mergeReaderNotes(part.readingRoom,part.modules?.readingRoom);
       }
+      state.notesDiagnostic=legacyProbe;
       state.translationsLoaded=['editionRegistry','ebookVault','polishEditionPipeline','translationStateReconciler'].some(k=>modulesRows(k).length>0);
       readBookState(state.payload);
       if(failed.length){
@@ -618,7 +648,7 @@
         state.notice='Rdzeń danych LIVE działa, ale nie pobrano: '+failed.join(', ')+'. Część historii lub wydań może być niewidoczna.';
       }else if(!state.notesLoaded){
         setHealth('LIVE · brak historii','warn');
-        state.notice='Archiwum Reading Room nie dotarło z Apps Script mimo udanego odczytu danych podstawowych. Potrzebna jest korekta serwowanego API.';
+        state.notice='Archiwum Reading Room nie zostało zwrócone przez dostępne tryby API (core + full). '+state.notesDiagnostic+'. Dane w arkuszu istnieją. Do rozwiązania potrzebna jest poprawka publikacji Apps Script.';
       }
       renderAll();
     } catch(error) {
@@ -658,5 +688,5 @@
     renderAll();load();
   }
   document.addEventListener('DOMContentLoaded',init);
-  window.__crimeLiteTest={readBookState,allowedNote,noteFromRow,noteRowsFrom,mergeReaderNotes,latestCompleteSignal,translationInventory,version:VERSION,state};
+  window.__crimeLiteTest={readBookState,allowedNote,noteFromRow,noteRowsFrom,mergeReaderNotes,latestCompleteSignal,liveReadingEvidence,translationInventory,version:VERSION,state};
 })();
