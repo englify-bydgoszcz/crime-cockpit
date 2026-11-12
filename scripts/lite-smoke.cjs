@@ -118,8 +118,9 @@ state.payload={library:baseLibrary,readingRoom:[],readerState:{}};
 readBookState(state.payload);
 assert.equal(state.active,null,'committed next alone must not imply a started book');
 assert.equal(state.next?.id,'BK00114','committed next should return when there is no progress evidence');
-assert.ok(js.includes("scope:'modules',keys:'readingRoom'"),'narrow Reading Room API not requested');
+assert.ok(js.includes("scope:'modules',keys:'readingRoom,tasteFrontier'"),'narrow Reading Room API not requested');
 assert.ok(!js.includes("scope:'full'"),'heavy full payload would time out the reader');
+assert.ok(js.includes('checkpointSnapshots,caseFileAssets,tasteFrontier'),'old API module batch must use a known safe key');
 const modulePayload={modules:{readingRoom:{sheet:'Reading Room',status:'OK',rows:[
   {'Note ID':'RR-0045','Book ID':'BK00114',Tytuł:'Gołoborze',Postęp:'strona 2',Typ:'FIRST IMPRESSION','Notatka użytkownika':'Test rozdziału 2'},
   {'Note ID':'RR-0046','Book ID':'BK00114',Tytuł:'Gołoborze',Postęp:'strona 9',Typ:'CONSTRUCTION','Notatka użytkownika':'Test aktualnej strony 9'}
