@@ -8,8 +8,8 @@ const js=fs.readFileSync('lite.js','utf8');
 const css=fs.readFileSync('lite.css','utf8');
 
 new Function(js); // Syntax validation
-assert.match(html,/lite\.js\?v=9\.2\.0/);
-assert.match(html,/lite\.css\?v=9\.2\.0/);
+assert.match(html,/lite\.js\?v=9\.3\.0/);
+assert.match(html,/lite\.css\?v=9\.3\.0/);
 assert.doesNotMatch(html,/<script[^>]*src="(?:app|demo-data)\.js/);
 const nav=[...html.matchAll(/data-nav="([^"]+)"/g)].map(m=>m[1]);
 assert.deepEqual(nav,['now','club','people','library','translations','next']);
@@ -99,7 +99,7 @@ assert.equal(trans.find(x=>x.id==='BK00117').kind,'active','41/41 draft must not
 assert.equal(trans.find(x=>x.id==='BK00116').kind,'private','Accepted verified private EPUB missing');
 assert.equal(trans.find(x=>x.id==='BK00113').kind,'queued','Next translation queue missing');
 assert.equal(trans.find(x=>x.id==='BK00117').link,'','Active draft must not get final EPUB link');
-assert.equal(win.__crimeLiteTest.version,'9.2.0-lite');
+assert.equal(win.__crimeLiteTest.version,'9.3.0-lite');
 
 
 const confirmedNotes=[
@@ -118,5 +118,16 @@ state.payload={library:baseLibrary,readingRoom:[],readerState:{}};
 readBookState(state.payload);
 assert.equal(state.active,null,'committed next alone must not imply a started book');
 assert.equal(state.next?.id,'BK00114','committed next should return when there is no progress evidence');
-assert.ok(js.includes("scope:'full'"),'legacy full API rescue path absent');
+assert.ok(js.includes("scope:'modules',keys:'readingRoom,tasteFrontier'"),'narrow Reading Room API not requested');
+assert.ok(!js.includes("scope:'full'"),'heavy full payload would time out the reader');
+assert.ok(js.includes('checkpointSnapshots,caseFileAssets,tasteFrontier'),'old API module batch must use a known safe key');
+const modulePayload={modules:{readingRoom:{sheet:'Reading Room',status:'OK',rows:[
+  {'Note ID':'RR-0045','Book ID':'BK00114',Tytuł:'Gołoborze',Postęp:'strona 2',Typ:'FIRST IMPRESSION','Notatka użytkownika':'Test rozdziału 2'},
+  {'Note ID':'RR-0046','Book ID':'BK00114',Tytuł:'Gołoborze',Postęp:'strona 9',Typ:'CONSTRUCTION','Notatka użytkownika':'Test aktualnej strony 9'}
+]}}};
+state.payload={library:baseLibrary,readingRoom:[],readerState:{}};
+mergeReaderNotes(modulePayload.modules.readingRoom);
+readBookState(state.payload);
+assert.equal(state.active?.id,'BK00114','readingRoom module must establish active book');
+assert.equal(state.inferredProgress?.page,9,'readingRoom module must establish checkpoint');
 console.log('Crime Cockpit Lite smoke: PASS (6 views, last completed, archived notes, TX status, independent EPUB evidence, spoiler gates)');
