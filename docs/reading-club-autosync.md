@@ -1,14 +1,16 @@
 
 # Crime Cockpit — Reading Club Auto-Sync Contract
-Version: 1.0 · accepted 2026-11-12 · status: **normative operating protocol**
+Version: 1.1 · corrected by owner 2026-11-12 · status: **normative operating protocol**
 
 ## Mission and user experience
+
+**AUTHORITATIVE PRODUCT DECISION:** All reading conversations happen in the existing **ChatGPT conversation/project**. The owner explicitly **does not want any chat window, AI chat model or messaging interface built into Crime Cockpit**. The Crime Cockpit website is a read-only presentation cockpit showing updated data, notes, portraits, characters, history and recommendations; never build an in-app chatbot. ChatGPT acts as the interactive controller, via connected tools, **during the owner's messages**.
 
 The owner chats in natural language about the currently read crime novel. The assistant is an engaged, spoiler-safe reading companion, **not** a form requesting tags, pages, identifiers, ratings, or workflow clicks on every turn.
 
 Every substantive reading update must trigger a **checkpoint transaction** to synchronize as much of the available, grounded, spoiler-safe backend as possible. It is a system responsibility, not the owner's data-entry job. Ask only short, natural follow-up questions when a key detail is genuinely missing or a targeted question will increase useful taste/reading signal. Do not burden the owner with technical progress/status chatter.
 
-**Important implementation distinction:** the existing GitHub Pages Lite application is a READ-ONLY viewer and notes archive. Its "Klub czytelniczy" is **not yet** a chat model or write-capable client. ChatGPT conversations with connected Google Sheets/Drive can execute the workflow during that interaction; an autonomous on-site chat needs a separate authenticated write backend, model orchestration, and media processing. A policy document is NOT a deployed integration. Never say an action happened merely because this protocol describes it.
+**Implementation distinction:** ChatGPT in this project is the ONLY conversation interface; Crime Cockpit Lite on GitHub Pages remains the **read-only viewer**, including its existing "Klub czytelniczy" archive. Its tab does **not** need chat functionality. In a ChatGPT turn, use available connected Google Sheets/Drive, image tools and other authorized actions to perform the checkpoint work, then verify the write; on the next page refresh the website reflects the updated backend. A written protocol is not an executed action or persistent background task. No website chat, messaging service, site model orchestration or in-app chat writeback is required or desired.
 
 ## Source hierarchy
 
@@ -89,19 +91,17 @@ An explicit finished-book event changes READ state only after confirmation; hold
 - If unavailable tools prevent generation/upload or app writeback, leave precise implementation work items in the canonical project docs/issue ledger and tell the owner about the constraint once, not on every casual note.
 - The UI is kept simple; complex matching, extraction, score calibration, QA and provenance remain backend-only.
 
-## Web app architecture for genuine on-site automation (NOT IMPLEMENTED YET)
+## ChatGPT-driven automation architecture — no in-app chat
 
-Today Lite on GitHub Pages is read-only (token-protected JSONP data loads) and its Reading Club displays archived notes. To satisfy "I type in the Club and it talks, updates the Sheet and creates portraits" end-to-end **inside the website**, it needs:
+**OWNER DECISION / HARD PRODUCT SCOPE:** The user communicates only through ChatGPT. Do not build or propose a conversational AI interface in the Crime Cockpit website. The site's "Klub czytelniczy" screen is a **read-only notebook and character/asset explorer**, not a messaging UI.
 
-1. Owner-authenticated chat service and a model capable of tool use, not a public client-side API key/token.
-2. Durable message/event store, event ID/deduplication, real-time chat output, bounded checkpoint classifier and model orchestration.
-3. Safe server-side read/write proxy for Google Sheets and Drive with least-privilege credentials; controlled Apps Script writes or a separate API. Current legacy read-only Apps Script must not be misrepresented as a writer.
-4. Private EPUB safe-prefix extractor tied to verified edition maps, supporting progressive incremental analysis.
-5. An image-generation/upload job with Drive-master provenance and explicit error statuses; an authorized attachment route for user-visible portraits.
-6. Sync-run ledger, outbox/retry/dead-letter handling, per-stage observability/health, test fixtures for early/late-page spoiler leakage and chapter/page corrections.
-7. Privacy/secret handling and isolation from public GitHub Pages assets. Never put raw owner notes, full EPUB passages, live tokens or secret URLs in the static public repo.
+**Present interaction path:** owner messages ChatGPT in the Crime Cockpit project → ChatGPT loads current canonical state and confirmed checkpoint → talks naturally and gathers only necessary clarifications → via available connected tools updates Reading Room, character/relations, progress/snapshot and other applicable backend tables; when supported, generates safe portraits, uploads Drive masters and registers metadata → verifies reads/writes → owner refreshes Crime Cockpit website to see the results.
 
-Implement in phases: (1) conversational event contract in ChatGPT and canonical data; (2) verified write service and log; (3) site chat + portrait processing; (4) fully automated reconciliation. No service exists merely because this roadmap is documented.
+**Automation is interaction-triggered, not autonomous background operation.** Execute this workflow in the current ChatGPT turn when access permits. Do not claim background monitoring or progress between chats unless a separate actual scheduled automation runs. If an action is unsupported (e.g. upload a generated image to Google Drive), leave a precisely labelled queue item and explain the blocker. Never claim a portrait has been uploaded solely because it was generated locally or queued in Case File Assets.
+
+**What is actually missing:** robust ChatGPT-to-canonical-Sheets/Drive tooling and batch-safe checkpoint pipeline, automatic safe-prefix EPUB processing, portrait generation and upload transport, idempotent audit trails, availability/integrity QA and refreshed **read-only** Apps Script output. These are the development scope. There is *no* requirement for an on-site chat backend, a model running in the browser, an embedded message composer, or a website-side write service for user messages.
+
+**Division of responsibilities:** ChatGPT owns conversation and orchestration; Google Sheets/Drive owns data and asset masters; Apps Script provides authenticated read-only feed; Crime Cockpit Lite owns clear, spoiler-safe presentation.
 
 ## Acceptance test for every new checkpoint
 
@@ -112,6 +112,6 @@ The owner says "Gołoborze, skończyłem stronę 9, zaczynają się przeskoki w 
 - Confirmed BK00114 / ED-PL-0114A / stop before page 10; source hash/evidence.
 - Character rows/relationships/dossiers/recall refreshed only to p9; metadata and timestamp recorded.
 - Eligible appearances sent to generation or queued; insufficient ones remain silhouette with explicit reason.
-- Browser, when connected, displays updated safe records; no false "no characters" when module missing.
+- The website's read-only views show the updated safe records after a refresh; no false "no characters" when a module is missing. No website chat is expected.
 - Stage-by-stage writes verified; remaining incomplete tasks visibly listed.
 - No future events or revelations disclosed; taste and frozen prediction untouched.
